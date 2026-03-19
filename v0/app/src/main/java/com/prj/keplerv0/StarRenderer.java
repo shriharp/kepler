@@ -10,8 +10,9 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.opengl.GLSurfaceView;
 
-public class StarRenderer implements StarGLSurfaceView.Renderer {
+public class StarRenderer implements GLSurfaceView.Renderer {
 
     private static final String VERTEX_SHADER =
             "attribute vec3 aPos;" +
@@ -26,6 +27,11 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
                     " gl_FragColor = vec4(1.0);" +
                     "}";
 
+    private final float[] rotationMatrix = new float[16];
+
+    public void setRotationMatrix(float[] matrix) {
+        System.arraycopy(matrix, 0, rotationMatrix, 0, 16);
+    }
     private int loadShader(int type, String code) {
         int shader = GLES20.glCreateShader(type);
 
@@ -70,8 +76,8 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
     private int program;
     private int starCount = 5000;
 
-    private float angleX = 0;
-    private float angleY = 0;
+//    private float angleX = 0;
+//    private float angleY = 0;
 
     private final float[] mvp = new float[16];
     private final float[] projection = new float[16];
@@ -79,10 +85,10 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
     private final float[] model = new float[16];
     private final float[] temp = new float[16];
 
-    public void rotate(float dx, float dy) {
-        angleX += dy * 0.5f;
-        angleY += dx * 0.5f;
-    }
+//    public void rotate(float dx, float dy) {
+//        angleX += dy * 0.5f;
+//        angleY += dx * 0.5f;
+//    }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -117,10 +123,19 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
         Matrix.setLookAtM(view, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0);
-
         Matrix.setIdentityM(model, 0);
-        Matrix.rotateM(model, 0, angleX, 1, 0, 0);
-        Matrix.rotateM(model, 0, angleY, 0, 1, 0);
+
+// 🔹 Remap coordinate system (IMPORTANT)
+        float[] remapped = new float[16];
+        android.hardware.SensorManager.remapCoordinateSystem(
+                rotationMatrix,
+                android.hardware.SensorManager.AXIS_X,
+                android.hardware.SensorManager.AXIS_Y,
+                remapped
+        );
+
+// 🔹 Apply rotation
+        Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
 
         Matrix.multiplyMM(temp, 0, view, 0, model, 0);
         Matrix.multiplyMM(mvp, 0, projection, 0, temp, 0);
