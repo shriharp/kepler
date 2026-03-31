@@ -1,8 +1,10 @@
 package com.prj.keplerv0;
 
+//wpackage com.prj.keplerv0;
+
 import java.util.Random;
 
-public class StarField {
+public class    StarField {
 
     public static float[] generate(int count) {
         float[] stars = new float[count * 3];

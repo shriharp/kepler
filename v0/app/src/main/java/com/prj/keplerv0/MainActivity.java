@@ -1,18 +1,29 @@
 package com.prj.keplerv0;
 
-import android.app.Activity;
 import android.os.Bundle;
-
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
+
+    private StarGLSurfaceView glSurfaceView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(new StarGLSurfaceView(this));
+
+        glSurfaceView = new StarGLSurfaceView(this);
+        setContentView(glSurfaceView);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        glSurfaceView.onResume(); // important for OpenGL
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        glSurfaceView.onPause(); // important for OpenGL
     }
 }

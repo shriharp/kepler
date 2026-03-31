@@ -1,8 +1,9 @@
 package com.prj.keplerv0;
 
+import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-
+import java.util.HashMap;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -10,15 +11,21 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.opengl.GLSurfaceView;
 
-public class StarRenderer implements StarGLSurfaceView.Renderer {
+public class StarRenderer implements GLSurfaceView.Renderer {
 
+    private Context context;
+
+    public StarRenderer(Context context) {
+        this.context = context;
+    }
     private static final String VERTEX_SHADER =
-            "attribute vec3 aPos;" +
+            "attribute vec4 aPos;" +
                     "uniform mat4 uMVP;" +
                     "void main(){" +
-                    " gl_Position = uMVP * vec4(aPos,1.0);" +
-                    " gl_PointSize = 3.0;" +
+                    " gl_Position = uMVP * vec4(aPos.xyz,1.0);" +
+                    " gl_PointSize = 2.0 + aPos.w * 6.0;" +
                     "}";
     private static final String FRAGMENT_SHADER =
             "precision mediump float;" +
@@ -26,6 +33,11 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
                     " gl_FragColor = vec4(1.0);" +
                     "}";
 
+    private final float[] rotationMatrix = new float[16];
+
+    public void setRotationMatrix(float[] matrix) {
+        System.arraycopy(matrix, 0, rotationMatrix, 0, 16);
+    }
     private int loadShader(int type, String code) {
         int shader = GLES20.glCreateShader(type);
 
@@ -65,13 +77,14 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
 
         return program;
     }
-
+    private FloatBuffer constellationBuffer;
+    private int constellationCount;
     private FloatBuffer starBuffer;
     private int program;
     private int starCount = 5000;
 
-    private float angleX = 0;
-    private float angleY = 0;
+//    private float angleX = 0;
+//    private float angleY = 0;
 
     private final float[] mvp = new float[16];
     private final float[] projection = new float[16];
@@ -79,17 +92,63 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
     private final float[] model = new float[16];
     private final float[] temp = new float[16];
 
-    public void rotate(float dx, float dy) {
-        angleX += dy * 0.5f;
-        angleY += dx * 0.5f;
-    }
+//    public void rotate(float dx, float dy) {
+//        angleX += dy * 0.5f;
+//        angleY += dx * 0.5f;
+//    }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
         GLES20.glClearColor(0, 0, 0, 1);
+        StarData data = StarCatalog.load(context);
 
-        float[] stars = StarField.generate(starCount);
+        float[] stars = data.vertices;
+        int[] hips = data.hipIds;
+//        float[] stars = StarCatalog.load(context);
+        starCount = stars.length / 4;
+
+        // load constellation pairs
+        int[][] lines = ConstellationLoader.load(context);
+
+// map HIP → star index
+        HashMap<Integer, Integer> map = new HashMap<>();
+
+        for (int i = 0; i < hips.length; i++) {
+            map.put(hips[i], i);
+        }
+
+// build line vertices
+        float[] lineVerts = new float[lines.length * 2 * 3];
+        int idx = 0;
+
+        for (int[] line : lines) {
+
+            Integer a = map.get(line[0]);
+            Integer b = map.get(line[1]);
+
+            if (a == null || b == null) continue;
+
+            // star A
+            lineVerts[idx++] = stars[a * 4];
+            lineVerts[idx++] = stars[a * 4 + 1];
+            lineVerts[idx++] = stars[a * 4 + 2];
+
+            // star B
+            lineVerts[idx++] = stars[b * 4];
+            lineVerts[idx++] = stars[b * 4 + 1];
+            lineVerts[idx++] = stars[b * 4 + 2];
+        }
+
+// create buffer
+        constellationBuffer = ByteBuffer
+                .allocateDirect(idx * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer();
+
+        constellationBuffer.put(lineVerts, 0, idx).position(0);
+
+        constellationCount = idx / 3;
 
         starBuffer = ByteBuffer
                 .allocateDirect(stars.length * 4)
@@ -117,10 +176,19 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
         Matrix.setLookAtM(view, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0);
-
         Matrix.setIdentityM(model, 0);
-        Matrix.rotateM(model, 0, angleX, 1, 0, 0);
-        Matrix.rotateM(model, 0, angleY, 0, 1, 0);
+
+// 🔹 Remap coordinate system (IMPORTANT)
+        float[] remapped = new float[16];
+        android.hardware.SensorManager.remapCoordinateSystem(
+                rotationMatrix,
+                android.hardware.SensorManager.AXIS_X,
+                android.hardware.SensorManager.AXIS_Y,
+                remapped
+        );
+
+// 🔹 Apply rotation
+        Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
 
         Matrix.multiplyMM(temp, 0, view, 0, model, 0);
         Matrix.multiplyMM(mvp, 0, projection, 0, temp, 0);
@@ -133,9 +201,13 @@ public class StarRenderer implements StarGLSurfaceView.Renderer {
         GLES20.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
 
         GLES20.glEnableVertexAttribArray(pos);
-        GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, starBuffer);
+        GLES20.glVertexAttribPointer(pos, 4, GLES20.GL_FLOAT, false, 0, starBuffer);
 
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, starCount);
+        GLES20.glLineWidth(1.5f);
+
+        GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, constellationBuffer);
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, constellationCount);
     }
 }
 

@@ -4,36 +4,59 @@ import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.view.MotionEvent;
 
-public class StarGLSurfaceView extends GLSurfaceView {
+
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+
+public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListener {
 
     private final StarRenderer renderer;
-    private float previousX, previousY;
+
+    private SensorManager sensorManager;
+    private Sensor rotationSensor;
 
     public StarGLSurfaceView(Context context) {
         super(context);
 
         setEGLContextClientVersion(2);
-
-        renderer = new StarRenderer();
+        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        renderer = new StarRenderer(context);
         setRenderer(renderer);
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent e) {
-        float x = e.getX();
-        float y = e.getY();
-
-        if (e.getAction() == MotionEvent.ACTION_MOVE) {
-            float dx = x - previousX;
-            float dy = y - previousY;
-
-            renderer.rotate(dx, dy);
-        }
-
-        previousX = x;
-        previousY = y;
-        return true;
+    public void onResume() {
+        super.onResume();
+        sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
     }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+        return true; // disable touch for now
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+
+            float[] rot = new float[16];
+            SensorManager.getRotationMatrixFromVector(rot, event.values);
+
+            renderer.setRotationMatrix(rot);
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }
 
