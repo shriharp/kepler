@@ -3,7 +3,7 @@ package com.prj.keplerv0;
 import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-
+import java.util.HashMap;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -77,7 +77,8 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         return program;
     }
-
+    private FloatBuffer constellationBuffer;
+    private int constellationCount;
     private FloatBuffer starBuffer;
     private int program;
     private int starCount = 5000;
@@ -100,9 +101,54 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
         GLES20.glClearColor(0, 0, 0, 1);
+        StarData data = StarCatalog.load(context);
 
-        float[] stars = StarCatalog.load(context);
+        float[] stars = data.vertices;
+        int[] hips = data.hipIds;
+//        float[] stars = StarCatalog.load(context);
         starCount = stars.length / 4;
+
+        // load constellation pairs
+        int[][] lines = ConstellationLoader.load(context);
+
+// map HIP → star index
+        HashMap<Integer, Integer> map = new HashMap<>();
+
+        for (int i = 0; i < hips.length; i++) {
+            map.put(hips[i], i);
+        }
+
+// build line vertices
+        float[] lineVerts = new float[lines.length * 2 * 3];
+        int idx = 0;
+
+        for (int[] line : lines) {
+
+            Integer a = map.get(line[0]);
+            Integer b = map.get(line[1]);
+
+            if (a == null || b == null) continue;
+
+            // star A
+            lineVerts[idx++] = stars[a * 4];
+            lineVerts[idx++] = stars[a * 4 + 1];
+            lineVerts[idx++] = stars[a * 4 + 2];
+
+            // star B
+            lineVerts[idx++] = stars[b * 4];
+            lineVerts[idx++] = stars[b * 4 + 1];
+            lineVerts[idx++] = stars[b * 4 + 2];
+        }
+
+// create buffer
+        constellationBuffer = ByteBuffer
+                .allocateDirect(idx * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer();
+
+        constellationBuffer.put(lineVerts, 0, idx).position(0);
+
+        constellationCount = idx / 3;
 
         starBuffer = ByteBuffer
                 .allocateDirect(stars.length * 4)
@@ -158,6 +204,10 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         GLES20.glVertexAttribPointer(pos, 4, GLES20.GL_FLOAT, false, 0, starBuffer);
 
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, starCount);
+        GLES20.glLineWidth(1.5f);
+
+        GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, constellationBuffer);
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, constellationCount);
     }
 }
 
