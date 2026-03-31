@@ -1,5 +1,6 @@
 package com.prj.keplerv0;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -29,7 +30,12 @@ public class MainActivity extends AppCompatActivity {
         btnMenu.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
         navigationView.setNavigationItemSelectedListener(item -> {
-            // Placeholder for menu actions
+            int id = item.getItemId();
+            if (id == R.id.nav_join_dots) {
+                Intent intent = new Intent(MainActivity.this, JoinDotsActivity.class);
+                startActivity(intent);
+            }
+            
             drawerLayout.closeDrawer(GravityCompat.START);
             return true;
         });
