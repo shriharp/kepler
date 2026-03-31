@@ -16,6 +16,7 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
 
     private SensorManager sensorManager;
     private Sensor rotationSensor;
+    private boolean useSensors = true;
 
     public StarGLSurfaceView(Context context) {
         super(context);
@@ -28,16 +29,28 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
     }
 
+    public void setUseSensors(boolean use) {
+        this.useSensors = use;
+    }
+
+    public StarRenderer getRenderer() {
+        return renderer;
+    }
+
     @Override
     public void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
+        if (useSensors && rotationSensor != null) {
+            sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
+        if (useSensors) {
+            sensorManager.unregisterListener(this);
+        }
     }
 
     @Override
@@ -47,7 +60,7 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+        if (useSensors && event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
 
             float[] rot = new float[16];
             SensorManager.getRotationMatrixFromVector(rot, event.values);
@@ -59,4 +72,3 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 }
-
