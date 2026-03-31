@@ -1,5 +1,6 @@
 package com.prj.keplerv0;
 
+import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 
@@ -14,12 +15,17 @@ import android.opengl.GLSurfaceView;
 
 public class StarRenderer implements GLSurfaceView.Renderer {
 
+    private Context context;
+
+    public StarRenderer(Context context) {
+        this.context = context;
+    }
     private static final String VERTEX_SHADER =
-            "attribute vec3 aPos;" +
+            "attribute vec4 aPos;" +
                     "uniform mat4 uMVP;" +
                     "void main(){" +
-                    " gl_Position = uMVP * vec4(aPos,1.0);" +
-                    " gl_PointSize = 3.0;" +
+                    " gl_Position = uMVP * vec4(aPos.xyz,1.0);" +
+                    " gl_PointSize = 2.0 + aPos.w * 6.0;" +
                     "}";
     private static final String FRAGMENT_SHADER =
             "precision mediump float;" +
@@ -95,7 +101,8 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         GLES20.glClearColor(0, 0, 0, 1);
 
-        float[] stars = StarField.generate(starCount);
+        float[] stars = StarCatalog.load(context);
+        starCount = stars.length / 4;
 
         starBuffer = ByteBuffer
                 .allocateDirect(stars.length * 4)
@@ -148,7 +155,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         GLES20.glUniformMatrix4fv(mvpLoc, 1, false, mvp, 0);
 
         GLES20.glEnableVertexAttribArray(pos);
-        GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, starBuffer);
+        GLES20.glVertexAttribPointer(pos, 4, GLES20.GL_FLOAT, false, 0, starBuffer);
 
         GLES20.glDrawArrays(GLES20.GL_POINTS, 0, starCount);
     }

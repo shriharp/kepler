@@ -23,7 +23,7 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
         setEGLContextClientVersion(2);
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        renderer = new StarRenderer();
+        renderer = new StarRenderer(context);
         setRenderer(renderer);
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
     }
