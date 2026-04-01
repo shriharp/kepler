@@ -16,6 +16,8 @@ import android.opengl.GLSurfaceView;
 public class StarRenderer implements GLSurfaceView.Renderer {
 
     private Context context;
+    private String[] starNames;
+    private float[] starVertices;
 
     public StarRenderer(Context context) {
         this.context = context;
@@ -83,8 +85,9 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private int program;
     private int starCount = 5000;
 
-//    private float angleX = 0;
-//    private float angleY = 0;
+    // Swipe pan offset angles (in degrees)
+    private volatile float angleX = 0f;
+    private volatile float angleY = 0f;
 
     private final float[] mvp = new float[16];
     private final float[] projection = new float[16];
@@ -92,10 +95,11 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private final float[] model = new float[16];
     private final float[] temp = new float[16];
 
-//    public void rotate(float dx, float dy) {
-//        angleX += dy * 0.5f;
-//        angleY += dx * 0.5f;
-//    }
+    /** Called from the touch thread; values are read on the GL thread — volatile is enough. */
+    public void rotate(float dx, float dy) {
+        angleX += dy * 0.3f;
+        angleY += dx * 0.3f;
+    }
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -104,6 +108,8 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         StarData data = StarCatalog.load(context);
 
         float[] stars = data.vertices;
+        starVertices = data.vertices;
+        starNames = data.names;
         int[] hips = data.hipIds;
 //        float[] stars = StarCatalog.load(context);
         starCount = stars.length / 4;
@@ -169,6 +175,48 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         float ratio = (float) width / height;
         Matrix.perspectiveM(projection, 0, 60, ratio, 0.1f, 100f);
     }
+    private String currentLabel = null;
+
+    public void setLabel(String label){
+        currentLabel = label;
+    }
+    public String pickStar(float nx, float ny) {
+
+        // Bug 4 fix: guard against being called before onSurfaceCreated completes
+        if (starVertices == null || starNames == null) return null;
+
+        float best = 0.15f;
+        String selected = null;
+
+        for (int i = 0; i < starCount; i++) {
+
+            float x = starVertices[i*4];
+            float y = starVertices[i*4+1];
+            float z = starVertices[i*4+2];
+
+            float[] v = new float[4];
+            // Bug 3 fix: removed unused float[] m allocation
+
+            Matrix.multiplyMV(v, 0, mvp, 0, new float[]{x, y, z, 1}, 0);
+
+            if (v[3] == 0) continue; // avoid divide-by-zero
+
+            float sx = v[0] / v[3];
+            float sy = v[1] / v[3];
+
+            float dx = sx - nx;
+            float dy = sy - ny;
+
+            float dist = (float) Math.sqrt(dx*dx + dy*dy);
+
+            if (dist < best && !starNames[i].isEmpty()) {
+                best = dist;
+                selected = starNames[i];
+            }
+        }
+
+        return selected; // null means no named star nearby
+    }
 
     @Override
     public void onDrawFrame(GL10 gl) {
@@ -187,8 +235,17 @@ public class StarRenderer implements GLSurfaceView.Renderer {
                 remapped
         );
 
-// 🔹 Apply rotation
+        // Apply sensor (gyroscope) rotation
         Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
+
+        // Apply swipe rotation on top of the sensor rotation
+        float[] swipeX = new float[16];
+        float[] swipeY = new float[16];
+        Matrix.setRotateM(swipeX, 0, angleX, 1f, 0f, 0f);
+        Matrix.setRotateM(swipeY, 0, angleY, 0f, 1f, 0f);
+        float[] swipe = new float[16];
+        Matrix.multiplyMM(swipe, 0, swipeY, 0, swipeX, 0);
+        Matrix.multiplyMM(model, 0, swipe, 0, model, 0);
 
         Matrix.multiplyMM(temp, 0, view, 0, model, 0);
         Matrix.multiplyMM(mvp, 0, projection, 0, temp, 0);
