@@ -2,6 +2,12 @@ package com.prj.keplerv0;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,10 +19,12 @@ public class MainActivity extends AppCompatActivity {
 
     private StarGLSurfaceView glSurfaceView;
     private DrawerLayout drawerLayout;
+    private TextView starLabel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Inflate the XML layout (DrawerLayout + NavigationView + container)
         setContentView(R.layout.activity_main);
 
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -24,8 +32,35 @@ public class MainActivity extends AppCompatActivity {
         ImageButton btnMenu = findViewById(R.id.btn_menu);
         FrameLayout container = findViewById(R.id.container);
 
+        // GLSurfaceView for the star field
         glSurfaceView = new StarGLSurfaceView(this);
+
+        // TextView overlay to show the tapped star name
+        starLabel = new TextView(this);
+        starLabel.setTextColor(Color.WHITE);
+        starLabel.setTextSize(18);
+        starLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        starLabel.setPadding(32, 32, 32, 32);
+        starLabel.setBackgroundColor(0x88000000); // semi-transparent black
+        starLabel.setVisibility(android.view.View.INVISIBLE);
+
+        FrameLayout.LayoutParams labelParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        labelParams.gravity = Gravity.TOP | Gravity.START;
+        labelParams.topMargin = 48;
+        labelParams.leftMargin = 48;
+
+        // Add GLSurfaceView + label overlay into the XML container (keeps DrawerLayout intact)
         container.addView(glSurfaceView);
+        container.addView(starLabel, labelParams);
+
+        // Wire up the listener — runs on UI thread, safe to touch Views
+        glSurfaceView.setOnStarPickedListener(name -> {
+            starLabel.setText(name);
+            starLabel.setVisibility(android.view.View.VISIBLE);
+        });
 
         btnMenu.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
@@ -42,7 +77,7 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, MultiplayerSetupActivity.class);
                 startActivity(intent);
             }
-            
+
             drawerLayout.closeDrawer(GravityCompat.START);
             return true;
         });

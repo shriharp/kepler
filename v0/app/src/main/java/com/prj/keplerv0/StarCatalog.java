@@ -1,8 +1,10 @@
 package com.prj.keplerv0;
 
 import android.content.Context;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -10,7 +12,7 @@ public class StarCatalog {
 
     public static StarData load(Context context) {
         try {
-            InputStream is = context.getAssets().open("hyg_trimmed_bright_stars.json");
+            InputStream is = context.getAssets().open("hyg_trimmed_named.json");
             int size = is.available();
             byte[] buffer = new byte[size];
             is.read(buffer);
@@ -21,11 +23,17 @@ public class StarCatalog {
 
             float[] stars = new float[arr.length() * 4];
             int[] hips = new int[arr.length()];
+            String[] names = new String[arr.length()];
 
             for (int i = 0; i < arr.length(); i++) {
+
                 JSONObject obj = arr.getJSONObject(i);
+
                 int hip = obj.getInt("hip");
                 hips[i] = hip;
+
+                String name = obj.optString("name", "");
+                names[i] = name;
 
                 float ra  = (float) obj.getDouble("ra");
                 float dec = (float) obj.getDouble("dec");
@@ -37,25 +45,26 @@ public class StarCatalog {
                 float x = (float)(Math.cos(decRad) * Math.cos(raRad));
                 float y = (float)(Math.cos(decRad) * Math.sin(raRad));
                 float z = (float)(Math.sin(decRad));
-                
+
                 float mag = (float) obj.getDouble("mag");
-                float radius = 10f;
+
                 float brightness = 1.5f - (mag / 6.0f);
                 brightness = Math.max(0.2f, brightness);
-                
-                stars[i*4] = x * radius;
+
+                float radius = 10f;
+
+                stars[i*4]   = x * radius;
                 stars[i*4+1] = y * radius;
                 stars[i*4+2] = z * radius;
                 stars[i*4+3] = brightness;
             }
 
-            return new StarData(stars, hips);
+            return new StarData(stars, hips, names);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // Return empty data instead of null to prevent NPEs
-        return new StarData(new float[0], new int[0]);
+        return new StarData(new float[0], new int[0], new String[0]);
     }
 }

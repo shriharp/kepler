@@ -14,6 +14,21 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
 
     private final StarRenderer renderer;
 
+    // Swipe tracking
+    private float lastX, lastY;
+    private boolean hasMoved;
+    private static final float MOVE_THRESHOLD = 8f; // pixels
+
+    // Callback interface so MainActivity can display the label in a TextView overlay
+    public interface OnStarPickedListener {
+        void onStarPicked(String name);
+    }
+
+    private OnStarPickedListener starPickedListener;
+
+    public void setOnStarPickedListener(OnStarPickedListener listener) {
+        starPickedListener = listener;
+    }
     private SensorManager sensorManager;
     private Sensor rotationSensor;
     private boolean useSensors = true;
@@ -55,7 +70,48 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        return true; // disable touch for now
+
+        switch (e.getAction()) {
+
+            case MotionEvent.ACTION_DOWN:
+                lastX = e.getX();
+                lastY = e.getY();
+                hasMoved = false;
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                float dx = e.getX() - lastX;
+                float dy = e.getY() - lastY;
+
+                if (!hasMoved && Math.abs(dx) < MOVE_THRESHOLD && Math.abs(dy) < MOVE_THRESHOLD) {
+                    break; // ignore tiny jitter before marking as a swipe
+                }
+
+                hasMoved = true;
+                renderer.rotate(dx, dy);
+                lastX = e.getX();
+                lastY = e.getY();
+                break;
+
+            case MotionEvent.ACTION_UP:
+                // Only trigger star-pick if the finger didn't swipe
+                if (!hasMoved) {
+                    final float nx = (e.getX() / getWidth()) * 2f - 1f;
+                    final float ny = -((e.getY() / getHeight()) * 2f - 1f);
+
+                    queueEvent(() -> {
+                        final String star = renderer.pickStar(nx, ny);
+                        post(() -> {
+                            if (starPickedListener != null) {
+                                starPickedListener.onStarPicked(star != null ? star : "No star nearby");
+                            }
+                        });
+                    });
+                }
+                break;
+        }
+
+        return true;
     }
 
     @Override
