@@ -34,6 +34,13 @@ public class MainActivity extends AppCompatActivity {
             if (id == R.id.nav_join_dots) {
                 Intent intent = new Intent(MainActivity.this, JoinDotsActivity.class);
                 startActivity(intent);
+            } else if (id == R.id.nav_profile) {
+                Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+                startActivity(intent);
+            } else if (id == R.id.nav_battle) {
+                // Modified to lead to Multiplayer/Mode selection
+                Intent intent = new Intent(MainActivity.this, MultiplayerSetupActivity.class);
+                startActivity(intent);
             }
             
             drawerLayout.closeDrawer(GravityCompat.START);

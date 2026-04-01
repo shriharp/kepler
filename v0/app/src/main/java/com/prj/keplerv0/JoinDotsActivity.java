@@ -22,12 +22,13 @@ public class JoinDotsActivity extends AppCompatActivity implements JoinDotsView.
 
     private JoinDotsView joinDotsView;
     private TextView tvName;
+    private String currentConstellationName;
     
     private static class ZodiacConstellation {
         String name;
         int[] memberStars;
 
-        ZodiacConstellation(String name, int[] memberStars) {
+         ZodiacConstellation(String name, int[] memberStars) {
             this.name = name;
             this.memberStars = memberStars;
         }
@@ -66,6 +67,7 @@ public class JoinDotsActivity extends AppCompatActivity implements JoinDotsView.
 
     private void startNewGame() {
         ZodiacConstellation selected = ZODIAC[new Random().nextInt(ZODIAC.length)];
+        currentConstellationName = selected.name;
         tvName.setText(selected.name);
         loadConstellationData(selected);
     }
@@ -185,6 +187,9 @@ public class JoinDotsActivity extends AppCompatActivity implements JoinDotsView.
 
     @Override
     public void onConstellationCompleted() {
-        Toast.makeText(this, "Well Done! Constellation Completed!", Toast.LENGTH_LONG).show();
+        if (currentConstellationName != null) {
+            CollectionManager.addCard(this, currentConstellationName);
+            Toast.makeText(this, "Well Done! " + currentConstellationName + " added to your collection!", Toast.LENGTH_LONG).show();
+        }
     }
 }
