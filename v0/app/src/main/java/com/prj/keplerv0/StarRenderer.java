@@ -18,10 +18,17 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private Context context;
     private String[] starNames;
     private float[] starVertices;
+    private boolean useDeviceOrientation = true;
 
     public StarRenderer(Context context) {
         this.context = context;
+        Matrix.setIdentityM(rotationMatrix, 0);
     }
+
+    public void setUseDeviceOrientation(boolean use) {
+        this.useDeviceOrientation = use;
+    }
+
     private static final String VERTEX_SHADER =
             "attribute vec4 aPos;" +
                     "uniform mat4 uMVP;" +
@@ -111,20 +118,16 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         starVertices = data.vertices;
         starNames = data.names;
         int[] hips = data.hipIds;
-//        float[] stars = StarCatalog.load(context);
         starCount = stars.length / 4;
 
-        // load constellation pairs
         int[][] lines = ConstellationLoader.load(context);
 
-// map HIP → star index
         HashMap<Integer, Integer> map = new HashMap<>();
 
         for (int i = 0; i < hips.length; i++) {
             map.put(hips[i], i);
         }
 
-// build line vertices
         float[] lineVerts = new float[lines.length * 2 * 3];
         int idx = 0;
 
@@ -135,18 +138,15 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
             if (a == null || b == null) continue;
 
-            // star A
             lineVerts[idx++] = stars[a * 4];
             lineVerts[idx++] = stars[a * 4 + 1];
             lineVerts[idx++] = stars[a * 4 + 2];
 
-            // star B
             lineVerts[idx++] = stars[b * 4];
             lineVerts[idx++] = stars[b * 4 + 1];
             lineVerts[idx++] = stars[b * 4 + 2];
         }
 
-// create buffer
         constellationBuffer = ByteBuffer
                 .allocateDirect(idx * 4)
                 .order(ByteOrder.nativeOrder())
@@ -163,7 +163,6 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         starBuffer.put(stars).position(0);
 
         program = createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
-
 
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
     }
@@ -220,12 +219,23 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
-
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
         Matrix.setLookAtM(view, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0);
         Matrix.setIdentityM(model, 0);
 
+        if (useDeviceOrientation) {
+            float[] remapped = new float[16];
+            android.hardware.SensorManager.remapCoordinateSystem(
+                    rotationMatrix,
+                    android.hardware.SensorManager.AXIS_X,
+                    android.hardware.SensorManager.AXIS_Y,
+                    remapped
+            );
+            Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
+        } else {
+            Matrix.multiplyMM(model, 0, rotationMatrix, 0, model, 0);
+        }
 // 🔹 Remap coordinate system (IMPORTANT)
         float[] remapped = new float[16];
         android.hardware.SensorManager.remapCoordinateSystem(
@@ -267,4 +277,3 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         GLES20.glDrawArrays(GLES20.GL_LINES, 0, constellationCount);
     }
 }
-

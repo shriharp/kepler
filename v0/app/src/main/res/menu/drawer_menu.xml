@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_profile"
+        android:title="Profile" />
+    <item
+        android:id="@+id/nav_battle"
+        android:title="Battle" />
+    <item
+        android:id="@+id/nav_quiz"
+        android:title="Quiz" />
+    <item
+        android:id="@+id/nav_join_dots"
+        android:title="Join the Dots" />
+    <item
+        android:id="@+id/nav_enable_touch"
+        android:title="Enable Touch" />
+</menu>
