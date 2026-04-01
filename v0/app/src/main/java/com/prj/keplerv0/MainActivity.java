@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Inflate the XML layout (DrawerLayout + NavigationView + container)
         setContentView(R.layout.activity_main);
 
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -34,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         // GLSurfaceView for the star field
         glSurfaceView = new StarGLSurfaceView(this);
 
-        // TextView overlay to show the tapped star name (Bug 1 fix)
+        // TextView overlay to show the tapped star name
         starLabel = new TextView(this);
         starLabel.setTextColor(Color.WHITE);
         starLabel.setTextSize(18);
@@ -51,18 +52,15 @@ public class MainActivity extends AppCompatActivity {
         labelParams.topMargin = 48;
         labelParams.leftMargin = 48;
 
-        // Stack GLSurfaceView + TextView in a FrameLayout
-        FrameLayout root = new FrameLayout(this);
-        root.addView(glSurfaceView);
-        root.addView(starLabel, labelParams);
-        setContentView(root);
+        // Add GLSurfaceView + label overlay into the XML container (keeps DrawerLayout intact)
+        container.addView(glSurfaceView);
+        container.addView(starLabel, labelParams);
 
         // Wire up the listener — runs on UI thread, safe to touch Views
         glSurfaceView.setOnStarPickedListener(name -> {
             starLabel.setText(name);
             starLabel.setVisibility(android.view.View.VISIBLE);
         });
-        container.addView(glSurfaceView);
 
         btnMenu.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 

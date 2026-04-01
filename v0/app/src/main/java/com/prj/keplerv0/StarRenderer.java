@@ -236,17 +236,6 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         } else {
             Matrix.multiplyMM(model, 0, rotationMatrix, 0, model, 0);
         }
-// 🔹 Remap coordinate system (IMPORTANT)
-        float[] remapped = new float[16];
-        android.hardware.SensorManager.remapCoordinateSystem(
-                rotationMatrix,
-                android.hardware.SensorManager.AXIS_X,
-                android.hardware.SensorManager.AXIS_Y,
-                remapped
-        );
-
-        // Apply sensor (gyroscope) rotation
-        Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
 
         // Apply swipe rotation on top of the sensor rotation
         float[] swipeX = new float[16];
