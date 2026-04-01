@@ -19,7 +19,7 @@ public class GameSocketManager {
     private PrintWriter out;
     private BufferedReader in;
     
-    // Use separate executors for receiving and sending to avoid deadlocks
+    // CRITICAL: Separate executors for sending and receiving to prevent deadlocks
     private ExecutorService receiveExecutor = Executors.newSingleThreadExecutor();
     private ExecutorService sendExecutor = Executors.newSingleThreadExecutor();
     
@@ -49,6 +49,7 @@ public class GameSocketManager {
                 socket = serverSocket.accept();
                 Log.d("KeplerNet", "Server: Client connected: " + socket.getInetAddress());
                 setupStreams();
+                serverSocket.close(); // Close server socket after one connection
             } catch (Exception e) {
                 Log.e("KeplerNet", "Server Error", e);
             }
@@ -59,7 +60,7 @@ public class GameSocketManager {
         receiveExecutor.execute(() -> {
             try {
                 Log.d("KeplerNet", "Client: Attempting to connect to " + hostAddress);
-                int retries = 10;
+                int retries = 15;
                 while (retries > 0) {
                     try {
                         socket = new Socket(hostAddress, PORT);
@@ -84,13 +85,13 @@ public class GameSocketManager {
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         Log.d("KeplerNet", "Streams setup complete. Sending LOBBY_READY");
         
-        // Notify the other device that we are ready
+        // Initial handshake to signal connection is alive
         sendMessage("LOBBY_READY");
 
         while (socket != null && !socket.isClosed()) {
             String msg = in.readLine();
             if (msg != null) {
-                Log.d("KeplerNet", "Message Received: " + msg);
+                Log.d("KeplerNet", "Raw Message Received: " + msg);
                 mainHandler.post(() -> {
                     if (listener != null) listener.onMessageReceived(msg);
                 });
@@ -104,13 +105,13 @@ public class GameSocketManager {
                 Log.d("KeplerNet", "Sending Message: " + message);
                 out.println(message);
             } else {
-                Log.e("KeplerNet", "Cannot send message, output stream is null: " + message);
+                Log.e("KeplerNet", "Cannot send message, stream null: " + message);
             }
         });
     }
 
     public void close() {
-        receiveExecutor.execute(() -> {
+        sendExecutor.execute(() -> {
             try {
                 if (socket != null) socket.close();
                 socket = null;

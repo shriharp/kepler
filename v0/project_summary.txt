@@ -1,0 +1,51 @@
+# KEPLER PROJECT SUMMARY & FUTURE ROADMAP
+
+## CURRENT FEATURES IMPLEMENTED
+
+### 1. 3D Celestial Engine (AR View)
+- Real-time 3D rendering of the night sky using OpenGL ES 2.0.
+- Interactive sensor-based exploration (Rotation Vector sensor) allowing users to look around the virtual celestial sphere.
+- High-accuracy star positions parsed from the HYG Star Catalog (Right Ascension and Declination to Cartesian mapping).
+- Constellation line overlays to visualize astronomical patterns.
+
+### 2. "Join the Dots" Mini-Game
+- A custom 2D interaction engine for constellation drawing.
+- Auto-zoom and centering logic that isolates a single constellation level.
+- "Magnifying Glass" UI tool for precise touch interaction in dense star clusters.
+- Closest-star snapping logic to ensure reliable line recognition.
+
+### 3. Collection & Progression System
+- Persistent storage using SharedPreferences via `CollectionManager`.
+- Card Collection mechanism: Drawing a constellation in the mini-game "unlocks" its corresponding battle card.
+- Collection Gallery / Profile: A visual overview of all 12 zodiac signs, showing which cards have been collected and which remain locked.
+
+### 4. Turn-Based Battle System (PvE & PvP)
+- Strict RPG mechanics: 50 HP, dynamic Energy (1-10), and turn-based ability usage.
+- 12 unique Card classes based on Zodiac myths, each with 2 Attack and 2 Defense abilities.
+- Ability Effects: Poison (DoT), Shield (Damage Reduction), Dodge (Negation), and Ignore Defense.
+- Local Multiplayer via Wi-Fi Direct:
+    - P2P Discovery and Group Creation (Host/Client architecture).
+    - Socket-level synchronization for move-by-move real-time gameplay.
+    - Bidirectional handshake to ensure data consistency before matches.
+
+---
+
+## FUTURE ROADMAP: MULTI-DECK CARD GAME
+
+### Phase 1: Expansion of the Star Catalog
+- Integrate more non-zodiac constellations (e.g., Orion, Ursa Major) as "Special Cards".
+- Add rarity tiers (Common, Rare, Mythic) based on the actual astronomical magnitude of the stars.
+
+### Phase 2: Deck Building Mechanics
+- Transition from a single-card active view to a "Deck of 5" system.
+- Implement a deck-building UI where users can choose which collected constellations to bring into battle.
+- Add "Passive" cards (Galaxies, Nebulae) that provide global buffs to the active deck.
+
+### Phase 3: Cloud Integration
+- Move star and card JSON data to a cloud endpoint.
+- Implement User Accounts to sync collections across multiple devices.
+- Global Leaderboards for the Battle mode.
+
+### Phase 4: Combat Polish
+- Visual effects (VFX) for different elements (Fire for Aries, Earth for Taurus, etc.).
+- Combat animations: Card shaking on impact, fading for dodge, and status icons for Poison/Shield.

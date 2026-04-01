@@ -15,7 +15,7 @@ import java.util.Random;
 public class GameActivity extends AppCompatActivity implements GameEngine.GameUpdateListener {
 
     private GameEngine engine;
-    private TextView tvUserHp, tvUserEnergy, tvAiHp, tvAiEnergy, tvAiCard, tvCardName, tvCardStats, tvLog;
+    private TextView tvUserHp, tvUserEnergy, tvAiHp, tvAiEnergy, tvAiCard, tvCardName, tvCardStats, tvLog, tvTurnIndicator;
     private Button btnAtk1, btnAtk2, btnDef1, btnDef2, btnEndTurn;
     
     private boolean isMultiplayer = false;
@@ -58,11 +58,9 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 if (!opponentCardReceived) {
                     setOpponentCard(parts[1]);
                     opponentCardReceived = true;
-                    // Send my card back as ACK
                     socketManager.sendMessage("CARD:" + engine.user.activeCard.name);
                     
                     if (getIntent().getBooleanExtra("is_host", false)) {
-                        // Host sends start signal
                         socketManager.sendMessage("START_GAME");
                         engine.startTurn();
                     }
@@ -71,10 +69,16 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 engine.startTurn();
             } else if (parts[0].equals("END_TURN")) {
                 engine.endTurn();
+            } else if (parts[0].equals("SYNC")) {
+                // Force sync HP and Energy to prevent divergence
+                engine.ai.hp = Integer.parseInt(parts[1]);
+                engine.ai.energy = Integer.parseInt(parts[2]);
+                engine.user.hp = Integer.parseInt(parts[3]);
+                engine.user.energy = Integer.parseInt(parts[4]);
+                onUpdate();
             }
         });
 
-        // Repeatedly send card info until opponent acknowledges
         syncRunnable = new Runnable() {
             @Override
             public void run() {
@@ -107,6 +111,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         tvCardName = findViewById(R.id.tv_card_name);
         tvCardStats = findViewById(R.id.tv_card_stats);
         tvLog = findViewById(R.id.tv_game_log);
+        tvTurnIndicator = findViewById(R.id.tv_turn_indicator);
 
         btnAtk1 = findViewById(R.id.btn_atk1);
         btnAtk2 = findViewById(R.id.btn_atk2);
@@ -117,6 +122,8 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         btnEndTurn.setOnClickListener(v -> {
             if (isMultiplayer) {
                 socketManager.sendMessage("END_TURN");
+                // Send a SYNC packet to ensure opponent has same values
+                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy);
             }
             engine.endTurn();
         });
@@ -135,7 +142,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         }
         if (engine.user.activeCard == null) engine.user.activeCard = library.get(0);
 
-        engine.ai.activeCard = library.get(0); // Placeholder
+        engine.ai.activeCard = library.get(0); 
 
         updateAbilityButtons();
 
@@ -180,6 +187,9 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         boolean isMyTurn = engine.isUserTurn;
         if (isMultiplayer && !opponentCardReceived) isMyTurn = false;
 
+        tvTurnIndicator.setText(isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN");
+        tvTurnIndicator.setTextColor(isMyTurn ? 0xFF00FF00 : 0xFFFF0000);
+
         btnEndTurn.setVisibility(isMyTurn ? View.VISIBLE : View.GONE);
         
         btnAtk1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(0).energyCost);
@@ -193,7 +203,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         String displayWinner = winner;
         if (isMultiplayer) {
             if (winner.equals("User")) displayWinner = "You";
-            else if (winner.equals("Opponent")) displayWinner = "Opponent";
+            else displayWinner = "Opponent";
         }
         Toast.makeText(this, "Game Over! Winner: " + displayWinner, Toast.LENGTH_LONG).show();
         finish();
