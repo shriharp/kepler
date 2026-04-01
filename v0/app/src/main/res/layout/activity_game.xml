@@ -8,20 +8,33 @@
     android:padding="16dp"
     tools:context=".GameActivity">
 
-    <!-- AI Stats -->
+    <!-- Turn Indicator -->
+    <TextView
+        android:id="@+id/tv_turn_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Waiting..."
+        android:textColor="#FFD700"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- AI/Opponent Stats -->
     <LinearLayout
         android:id="@+id/ll_ai_stats"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/tv_turn_indicator">
 
         <TextView
             android:id="@+id/tv_ai_hp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI HP: 50"
+            android:text="Opponent HP: 50"
             android:textColor="#FF0000"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -30,7 +43,7 @@
             android:id="@+id/tv_ai_energy"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI Energy: 1"
+            android:text="Opponent Energy: 1"
             android:textColor="#0000FF"
             android:textSize="14sp" />
     </LinearLayout>
@@ -40,7 +53,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="AI Card: Leo"
+        android:text="Opponent Card: ..."
         android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ll_ai_stats" />
@@ -59,7 +72,7 @@
             android:id="@+id/tv_game_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Game started!\n"
+            android:text="Initializing battle links...\n"
             android:textColor="#AAAAAA"
             android:textSize="12sp" />
     </ScrollView>
@@ -87,7 +100,7 @@
                 android:id="@+id/tv_card_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Aries"
+                android:text="..."
                 android:textColor="#FFFFFF"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -96,7 +109,7 @@
                 android:id="@+id/tv_card_stats"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="ATK: 9 | DEF: 5"
+                android:text="ATK: ? | DEF: ?"
                 android:textColor="#FFD700" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -187,6 +200,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="End Turn"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
