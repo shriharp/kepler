@@ -1,18 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="120dp"
-    android:background="#222222"
-    android:gravity="bottom"
+    android:layout_height="198dp"
+    android:background="@drawable/nav_header_bg"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp"
+    android:gravity="bottom">
 
+    <!-- Star glyph emblem -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Menu"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+        android:text="&#x2726;"
+        android:textColor="@color/accent_gold"
+        android:textSize="28sp"
+        android:layout_marginBottom="10dp" />
+
+    <!-- App name -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="KEPLER"
+        android:textColor="@color/text_primary"
+        android:textSize="26sp"
+        android:fontFamily="sans-serif-light"
+        android:letterSpacing="0.25" />
+
+    <!-- App subtitle -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stellar Navigator"
+        android:textColor="@color/accent_blue"
+        android:textSize="12sp"
+        android:letterSpacing="0.08"
+        android:layout_marginTop="2dp" />
+
+    <!-- Thin divider line -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="1dp"
+        android:background="@color/accent_blue"
+        android:alpha="0.5"
+        android:layout_marginTop="14dp" />
 
 </LinearLayout>

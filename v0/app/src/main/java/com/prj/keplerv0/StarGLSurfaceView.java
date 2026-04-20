@@ -45,7 +45,19 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
     }
 
     public void setUseSensors(boolean use) {
-        this.useSensors = use;
+        if (useSensors == use) return;   // no-op if unchanged
+        useSensors = use;
+        renderer.setUseDeviceOrientation(use);
+        if (use) {
+            // Re-enable sensor: start receiving rotation events immediately
+            if (rotationSensor != null) {
+                sensorManager.registerListener(this, rotationSensor,
+                        SensorManager.SENSOR_DELAY_GAME);
+            }
+        } else {
+            // Disable sensor: stop receiving events so the view is now swipe-only
+            sensorManager.unregisterListener(this);
+        }
     }
 
     public StarRenderer getRenderer() {

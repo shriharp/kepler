@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Base -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Deep-space background tones -->
+    <color name="space_black">#000510</color>
+    <color name="drawer_bg">#090E1D</color>
+    <color name="header_bg">#040A18</color>
+
+    <!-- Accents -->
+    <color name="accent_blue">#5B8EFF</color>
+    <color name="accent_blue_dim">#2A4B99</color>
+    <color name="accent_gold">#FFAA44</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8899CC</color>
+
+    <!-- Divider / borders -->
+    <color name="divider">#1A2550</color>
+
+    <!-- Navigation selected state (Material3 secondary container) -->
+    <color name="nav_selected_bg">#1A2A50</color>
+    <color name="nav_selected_text">#7AABFF</color>
 </resources>
