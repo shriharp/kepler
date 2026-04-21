@@ -74,24 +74,35 @@ public class MultiplayerSetupActivity extends AppCompatActivity implements WifiP
         btnJoin.setOnClickListener(v -> handleAction(false));
         
         socketManager = GameSocketManager.getInstance();
+        socketManager.close(); // Clean up any lingering sockets from previous games
     }
 
     private void handleAction(boolean isHost) {
         if (!checkPermissions()) return;
 
+        // Robust cleanup to prevent BUSY (2) errors
+        manager.cancelConnect(channel, null);
+        manager.stopPeerDiscovery(channel, null);
+
         manager.removeGroup(channel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                if (isHost) startHosting();
-                else startJoining();
+                proceedWithAction(isHost);
             }
 
             @Override
             public void onFailure(int reason) {
-                if (isHost) startHosting();
-                else startJoining();
+                proceedWithAction(isHost);
             }
         });
+    }
+
+    private void proceedWithAction(boolean isHost) {
+        // Small delay to let the framework breathe after removing group
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (isHost) startHosting();
+            else startJoining();
+        }, 500);
     }
 
     private void startHosting() {
