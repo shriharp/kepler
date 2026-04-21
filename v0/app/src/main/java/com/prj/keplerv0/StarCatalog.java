@@ -28,6 +28,7 @@ public class StarCatalog {
             String[] names   = new String[count];
             float[]  raDeg   = new float[count];   // Right Ascension in degrees
             float[]  decDeg  = new float[count];   // Declination in degrees
+            float[]  mags    = new float[count];   // Apparent magnitude
 
             for (int i = 0; i < count; i++) {
 
@@ -61,14 +62,15 @@ public class StarCatalog {
                 stars[i*4+1] = y * radius;
                 stars[i*4+2] = z * radius;
                 stars[i*4+3] = brightness;
+                mags[i]      = mag;
             }
 
-            return new StarData(stars, hips, names, raDeg, decDeg);
+            return new StarData(stars, hips, names, raDeg, decDeg, mags);
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return new StarData(new float[0], new int[0], new String[0], new float[0], new float[0]);
+        return new StarData(new float[0], new int[0], new String[0], new float[0], new float[0], new float[0]);
     }
 }

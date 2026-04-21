@@ -9,6 +9,8 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -24,6 +26,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private float[]              allVertices;
     private float[]              allRaDeg;
     private float[]              allDecDeg;
+    private float[]              allMags;
     private String[]             allNames;
     private int[]                allHips;
     private int                  totalStars;
@@ -33,7 +36,17 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     // Visible-only view (rebuilt when location/time changes)
     private float[]  starVertices;
     private String[] starNames;
+    private float[]  starMags;
     private int      starCount;
+
+    // Overlay and Constellations
+    private SkyOverlayView overlayView;
+    private int surfaceWidth, surfaceHeight;
+    private static class ConstellationCentroid {
+        ConstellationData.Constellation data;
+        float x, y, z;
+    }
+    private ConstellationCentroid[] constCentroids;
 
     // OpenGL state - stars + constellations
     private FloatBuffer starBuffer;
@@ -132,6 +145,19 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
     public void requestRebuild() { needsRebuild = true; }
 
+    public void setOverlayView(SkyOverlayView view) {
+        this.overlayView = view;
+    }
+
+    public static class PickResult {
+        public String title;
+        public String subtitle;
+        public String mythology;
+        public PickResult(String t, String s, String m) {
+            title = t; subtitle = s; mythology = m;
+        }
+    }
+
     // -------------------------------------------------------------------------
     // GLSurfaceView.Renderer
     // -------------------------------------------------------------------------
@@ -144,6 +170,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         allVertices     = data.vertices;
         allRaDeg        = data.raDeg;
         allDecDeg       = data.decDeg;
+        allMags         = data.mag;
         allNames        = data.names;
         allHips         = data.hipIds;
         totalStars      = allVertices.length / 4;
@@ -153,9 +180,35 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         constellationLines = ConstellationLoader.load(context);
 
+        // Precompute constellation centroids
+        constCentroids = new ConstellationCentroid[ConstellationData.CONSTELLATIONS.length];
+        for (int i = 0; i < ConstellationData.CONSTELLATIONS.length; i++) {
+            ConstellationData.Constellation c = ConstellationData.CONSTELLATIONS[i];
+            ConstellationCentroid cc = new ConstellationCentroid();
+            cc.data = c;
+            float sumX = 0, sumY = 0, sumZ = 0;
+            int count = 0;
+            for (int hip : c.memberStars) {
+                Integer idx = hipToIndex.get(hip);
+                if (idx != null) {
+                    sumX += allVertices[idx * 4];
+                    sumY += allVertices[idx * 4 + 1];
+                    sumZ += allVertices[idx * 4 + 2];
+                    count++;
+                }
+            }
+            if (count > 0) {
+                cc.x = sumX / count;
+                cc.y = sumY / count;
+                cc.z = sumZ / count;
+            }
+            constCentroids[i] = cc;
+        }
+
         // Before GPS fix: show the full catalog
         starVertices = allVertices;
         starNames    = allNames;
+        starMags     = allMags;
         starCount    = totalStars;
 
         uploadStarBuffer(allVertices);
@@ -172,6 +225,8 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
+        surfaceWidth = width;
+        surfaceHeight = height;
         float ratio = (float) width / height;
         Matrix.perspectiveM(projection, 0, 60f, ratio, 0.1f, 100f);
     }
@@ -242,37 +297,103 @@ public class StarRenderer implements GLSurfaceView.Renderer {
             GLES20.glLineWidth(2.5f);
             GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, horizCount);
         }
+
+        // --- Label Projection ---
+        if (overlayView != null) {
+            List<SkyLabel> labels = new ArrayList<>();
+            float[] v = new float[4];
+
+            // 1. Constellations
+            if (constCentroids != null) {
+                for (ConstellationCentroid cc : constCentroids) {
+                    if (cc.x == 0 && cc.y == 0 && cc.z == 0) continue; // no member matched
+                    Matrix.multiplyMV(v, 0, mvp, 0, new float[]{cc.x, cc.y, cc.z, 1f}, 0);
+                    if (v[3] > 0) {
+                        float ndcX = v[0] / v[3];
+                        float ndcY = v[1] / v[3];
+                        if (ndcX >= -1.2f && ndcX <= 1.2f && ndcY >= -1.2f && ndcY <= 1.2f) {
+                            float screenX = (ndcX + 1f) / 2f * surfaceWidth;
+                            float screenY = (1f - ndcY) / 2f * surfaceHeight;
+                            labels.add(new SkyLabel(cc.data.name, screenX, screenY, SkyLabel.Type.CONSTELLATION, -1f, cc.data.subtitle, cc.data.mythology));
+                        }
+                    }
+                }
+            }
+
+            // 2. Stars
+            for (int i = 0; i < starCount; i++) {
+                if (starNames[i] == null || starNames[i].isEmpty()) continue;
+                if (starMags[i] > 2.5f) continue; // Skip dim named stars to reduce checking
+
+                float x = starVertices[i * 4];
+                float y = starVertices[i * 4 + 1];
+                float z = starVertices[i * 4 + 2];
+
+                Matrix.multiplyMV(v, 0, mvp, 0, new float[]{x, y, z, 1f}, 0);
+                if (v[3] > 0) {
+                    float ndcX = v[0] / v[3];
+                    float ndcY = v[1] / v[3];
+                    if (ndcX >= -1.2f && ndcX <= 1.2f && ndcY >= -1.2f && ndcY <= 1.2f) {
+                        float screenX = (ndcX + 1f) / 2f * surfaceWidth;
+                        float screenY = (1f - ndcY) / 2f * surfaceHeight;
+                        labels.add(new SkyLabel(starNames[i], screenX, screenY, SkyLabel.Type.STAR, starMags[i], "Mag: " + String.format("%.2f", starMags[i]), null));
+                    }
+                }
+            }
+            
+            overlayView.setLabels(labels);
+        }
     }
 
     // -------------------------------------------------------------------------
     // Star picking
     // -------------------------------------------------------------------------
 
-    public String pickStar(float nx, float ny) {
+    public PickResult pickStar(float nx, float ny) {
         if (starVertices == null || starNames == null) return null;
 
-        float  best     = 0.15f;
-        String selected = null;
+        float  bestDist  = 0.15f;
+        PickResult bestResult = null;
+        
+        // Check Constellations first (larger Hitbox, slightly different check)
+        if (constCentroids != null) {
+            for (ConstellationCentroid cc : constCentroids) {
+                if (cc.x == 0 && cc.y == 0 && cc.z == 0) continue;
+                float[] v = new float[4];
+                Matrix.multiplyMV(v, 0, mvp, 0, new float[]{cc.x, cc.y, cc.z, 1f}, 0);
+                if (v[3] <= 0f) continue;
+                float sx = v[0] / v[3], sy = v[1] / v[3];
+                float dx = sx - nx,     dy = sy - ny;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestResult = new PickResult(cc.data.name, cc.data.subtitle, cc.data.mythology);
+                }
+            }
+        }
 
+        // If we found a core constellation centroid very close, we can return it.
+        // But stars are precise. Let's check stars.
         for (int i = 0; i < starCount; i++) {
+            if (starNames[i] == null || starNames[i].isEmpty()) continue;
             float x = starVertices[i * 4];
             float y = starVertices[i * 4 + 1];
             float z = starVertices[i * 4 + 2];
 
             float[] v = new float[4];
             Matrix.multiplyMV(v, 0, mvp, 0, new float[]{x, y, z, 1f}, 0);
-            if (v[3] == 0f) continue;
+            if (v[3] <= 0f) continue;
 
             float sx = v[0] / v[3], sy = v[1] / v[3];
             float dx = sx - nx,     dy = sy - ny;
             float dist = (float) Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < best && !starNames[i].isEmpty()) {
-                best     = dist;
-                selected = starNames[i];
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestResult = new PickResult(starNames[i], "Mag: " + String.format("%.2f", starMags[i]), "");
             }
         }
-        return selected;
+        return bestResult;
     }
 
     // -------------------------------------------------------------------------
@@ -310,6 +431,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         // 2. Build filtered vertex arrays with atmospheric extinction
         float[]  visVerts = new float[visCount * 4];
         String[] visNames = new String[visCount];
+        float[]  visMags  = new float[visCount];
         int vi = 0;
 
         for (int i = 0; i < totalStars; i++) {
@@ -324,11 +446,13 @@ public class StarRenderer implements GLSurfaceView.Renderer {
             visVerts[vi * 4 + 2] = allVertices[i * 4 + 2];
             visVerts[vi * 4 + 3] = allVertices[i * 4 + 3] * ext;
             visNames[vi]         = allNames[i];
+            visMags[vi]          = allMags[i];
             vi++;
         }
 
         starVertices = visVerts;
         starNames    = visNames;
+        starMags     = visMags;
         starCount    = visCount;
 
         // 3. Push to GPU

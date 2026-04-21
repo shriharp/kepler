@@ -23,7 +23,7 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
     // Callback interface so MainActivity can display the label in a TextView
     // overlay
     public interface OnStarPickedListener {
-        void onStarPicked(String name);
+        void onStarPicked(StarRenderer.PickResult result);
     }
 
     private OnStarPickedListener starPickedListener;
@@ -119,10 +119,10 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
                     final float ny = -((e.getY() / getHeight()) * 2f - 1f);
 
                     queueEvent(() -> {
-                        final String star = renderer.pickStar(nx, ny);
+                        final StarRenderer.PickResult result = renderer.pickStar(nx, ny);
                         post(() -> {
                             if (starPickedListener != null) {
-                                starPickedListener.onStarPicked(star != null ? star : "No star nearby");
+                                starPickedListener.onStarPicked(result);
                             }
                         });
                     });

@@ -37,6 +37,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvLocation;
     private TextView tvStarCount;
     private TextView tvMode;
+    private TextView tvStarSubtitle;
+    private TextView tvStarMythology;
+    private SkyOverlayView skyOverlayView;
 
     /** Whether the gyroscope is the active control method. */
     private boolean gyroscopeEnabled = true;
@@ -87,13 +90,17 @@ public class MainActivity extends AppCompatActivity {
         FrameLayout container = findViewById(R.id.container);
         starInfoCard = findViewById(R.id.star_info_card);
         tvStarName   = findViewById(R.id.tv_star_name);
+        tvStarSubtitle = findViewById(R.id.tv_star_subtitle);
+        tvStarMythology= findViewById(R.id.tv_star_mythology);
         tvLocation   = findViewById(R.id.tv_location);
         tvStarCount  = findViewById(R.id.tv_star_count);
         tvMode       = findViewById(R.id.tv_mode);
+        skyOverlayView = findViewById(R.id.sky_overlay_view);
 
         // Create and insert the GL surface at index 0 (bottom of Z stack)
-        // so all XML overlay views (HUD, star card) render on top of it.
+        // so all XML overlay views (HUD, star card, labels) render on top of it.
         glSurfaceView = new StarGLSurfaceView(this);
+        glSurfaceView.getRenderer().setOverlayView(skyOverlayView);
         container.addView(glSurfaceView, 0,
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -105,9 +112,24 @@ public class MainActivity extends AppCompatActivity {
         });
 
         // Star info card: show on tap, dismiss on card tap
-        glSurfaceView.setOnStarPickedListener(name -> {
-            if (name == null || name.equals("No star nearby")) return;
-            tvStarName.setText(name);
+        glSurfaceView.setOnStarPickedListener(result -> {
+            if (result == null || result.title == null) return;
+            tvStarName.setText(result.title);
+            
+            if (result.subtitle != null && !result.subtitle.isEmpty()) {
+                tvStarSubtitle.setText(result.subtitle);
+                tvStarSubtitle.setVisibility(View.VISIBLE);
+            } else {
+                tvStarSubtitle.setVisibility(View.GONE);
+            }
+            
+            if (result.mythology != null && !result.mythology.isEmpty()) {
+                tvStarMythology.setText(result.mythology);
+                tvStarMythology.setVisibility(View.VISIBLE);
+            } else {
+                tvStarMythology.setVisibility(View.GONE);
+            }
+            
             starInfoCard.setVisibility(View.VISIBLE);
         });
         starInfoCard.setOnClickListener(v -> starInfoCard.setVisibility(View.GONE));
