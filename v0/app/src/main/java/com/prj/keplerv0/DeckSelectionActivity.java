@@ -27,26 +27,42 @@ public class DeckSelectionActivity extends AppCompatActivity {
         RecyclerView rv = findViewById(R.id.rv_deck_selection);
         rv.setLayoutManager(new LinearLayoutManager(this));
 
-        Set<String> collected = CollectionManager.getCollection(this);
-        List<Card> allCards = GameEngine.getLibrary();
-        List<Card> availableCards = new ArrayList<>();
+        Set<String>  collected    = CollectionManager.getCollection(this);
+        Set<String>  partial      = CollectionManager.getPartialCollection(this);
+        List<Card>   allCards     = GameEngine.getLibrary();
 
+        // Full unlocks
+        List<Card> fullCards = new ArrayList<>();
         for (Card c : allCards) {
-            if (collected.contains(c.name)) {
-                availableCards.add(c);
-            }
+            if (collected.contains(c.name)) fullCards.add(c);
         }
 
-        if (availableCards.isEmpty()) {
-            Toast.makeText(this, "You haven't collected any cards yet! Draw some constellations first.", Toast.LENGTH_LONG).show();
+        // Partial unlocks (weakened)
+        List<Card> partialCards = new ArrayList<>();
+        for (String name : partial) {
+            Card weak = GameEngine.getWeakenedCard(name);
+            if (weak != null) partialCards.add(weak);
+        }
+
+        if (fullCards.isEmpty() && partialCards.isEmpty()) {
+            Toast.makeText(this,
+                    "You haven't collected any cards yet!\nTap a constellation in the sky viewer or complete a JoinDots puzzle.",
+                    Toast.LENGTH_LONG).show();
             finish();
             return;
+        }
+
+        // Flat list: full cards → null sentinel (header) → partial cards
+        List<Card> rows = new ArrayList<>(fullCards);
+        if (!partialCards.isEmpty()) {
+            rows.add(null);
+            rows.addAll(partialCards);
         }
 
         Button btnConfirm = findViewById(R.id.btn_confirm_deck);
         List<String> selectedCards = new ArrayList<>();
 
-        DeckAdapter adapter = new DeckAdapter(availableCards, selectedCards, () -> {
+        DeckAdapter adapter = new DeckAdapter(rows, selectedCards, () -> {
             btnConfirm.setText("Confirm Deck (" + selectedCards.size() + "/2)");
             btnConfirm.setEnabled(selectedCards.size() == 2);
         });
@@ -55,51 +71,75 @@ public class DeckSelectionActivity extends AppCompatActivity {
         btnConfirm.setOnClickListener(v -> {
             Intent intent = new Intent(DeckSelectionActivity.this, GameActivity.class);
             intent.putStringArrayListExtra("selected_cards", new ArrayList<>(selectedCards));
-            
+
             // Forward multiplayer info if present
             if (getIntent().hasExtra("is_multiplayer")) {
                 intent.putExtra("is_multiplayer", getIntent().getBooleanExtra("is_multiplayer", false));
-                intent.putExtra("is_host", getIntent().getBooleanExtra("is_host", false));
-                intent.putExtra("host_address", getIntent().getStringExtra("host_address"));
+                intent.putExtra("is_host",        getIntent().getBooleanExtra("is_host", false));
+                intent.putExtra("host_address",   getIntent().getStringExtra("host_address"));
             }
-            
+
             startActivity(intent);
             finish();
         });
     }
 
-    private static class DeckAdapter extends RecyclerView.Adapter<DeckAdapter.ViewHolder> {
+    private static class DeckAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         interface OnSelectionChangedListener { void onSelectionChanged(); }
-        private List<Card> cards;
-        private List<String> selectedCards;
-        private OnSelectionChangedListener listener;
 
-        DeckAdapter(List<Card> cards, List<String> selectedCards, OnSelectionChangedListener listener) {
-            this.cards = cards;
+        private static final int TYPE_HEADER = 0;
+        private static final int TYPE_CARD   = 1;
+
+        private final List<Card>                rows;
+        private final List<String>              selectedCards;
+        private final OnSelectionChangedListener listener;
+
+        DeckAdapter(List<Card> rows, List<String> selectedCards, OnSelectionChangedListener listener) {
+            this.rows          = rows;
             this.selectedCards = selectedCards;
-            this.listener = listener;
+            this.listener      = listener;
         }
 
-        @NonNull
-        @Override
-        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        @Override public int getItemViewType(int position) {
+            return rows.get(position) == null ? TYPE_HEADER : TYPE_CARD;
+        }
+
+        @NonNull @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            if (viewType == TYPE_HEADER) {
+                TextView tv = new TextView(parent.getContext());
+                tv.setText("⭐ Partial Unlocks  (half-strength — complete JoinDots to upgrade)");
+                tv.setTextSize(13f);
+                tv.setTextColor(0xFFFFD700);
+                tv.setPadding(32, 24, 32, 8);
+                tv.setLayoutParams(new RecyclerView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                return new RecyclerView.ViewHolder(tv) {};
+            }
             View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_constellation_card, parent, false);
-            return new ViewHolder(v);
+            return new CardViewHolder(v);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            Card c = cards.get(position);
-            holder.tvName.setText(c.name);
-            holder.tvStatus.setText("ATK: " + c.attack + " | DEF: " + c.defense);
-            
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (getItemViewType(position) == TYPE_HEADER) return;
+
+            Card c = rows.get(position);
+            CardViewHolder cvh = (CardViewHolder) holder;
+            cvh.tvName.setText(c.name);
+            cvh.tvStatus.setText("ATK: " + c.attack + " | DEF: " + c.defense);
+
+            boolean isPartial = c.name.startsWith("★½ ");
+            cvh.tvName.setAlpha(isPartial ? 0.65f : 1f);
+            cvh.tvStatus.setAlpha(isPartial ? 0.65f : 1f);
+
             if (selectedCards.contains(c.name)) {
-                holder.itemView.setBackgroundColor(Color.DKGRAY);
+                cvh.itemView.setBackgroundColor(Color.DKGRAY);
             } else {
-                holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+                cvh.itemView.setBackgroundColor(Color.TRANSPARENT);
             }
 
-            holder.itemView.setOnClickListener(v -> {
+            cvh.itemView.setOnClickListener(v -> {
                 if (selectedCards.contains(c.name)) {
                     selectedCards.remove(c.name);
                 } else if (selectedCards.size() < 2) {
@@ -113,14 +153,13 @@ public class DeckSelectionActivity extends AppCompatActivity {
             });
         }
 
-        @Override
-        public int getItemCount() { return cards.size(); }
+        @Override public int getItemCount() { return rows.size(); }
 
-        static class ViewHolder extends RecyclerView.ViewHolder {
+        static class CardViewHolder extends RecyclerView.ViewHolder {
             TextView tvName, tvStatus;
-            ViewHolder(View v) {
+            CardViewHolder(View v) {
                 super(v);
-                tvName = v.findViewById(R.id.tv_card_name);
+                tvName   = v.findViewById(R.id.tv_card_name);
                 tvStatus = v.findViewById(R.id.tv_card_status);
             }
         }

@@ -8,6 +8,7 @@ import android.hardware.SensorManager;
 import android.opengl.GLSurfaceView;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.Surface;
 import android.view.WindowManager;
 
@@ -19,6 +20,10 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
     private float lastX, lastY;
     private boolean hasMoved;
     private static final float MOVE_THRESHOLD = 8f; // pixels
+
+    // Pinch-to-zoom
+    private ScaleGestureDetector scaleDetector;
+    private float lastFov = 60f;  // tracks FOV before the current pinch started
 
     // Callback interface so MainActivity can display the label in a TextView
     // overlay
@@ -46,6 +51,25 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
         renderer = new StarRenderer(context);
         setRenderer(renderer);
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+
+        // Pinch-to-zoom detector
+        scaleDetector = new ScaleGestureDetector(context,
+                new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                    @Override
+                    public boolean onScaleBegin(ScaleGestureDetector d) {
+                        lastFov = renderer.getFov();
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onScale(ScaleGestureDetector d) {
+                        // Dividing FOV by scale factor zooms in when pinching out
+                        float newFov = lastFov / d.getScaleFactor();
+                        renderer.setFov(newFov);
+                        lastFov = renderer.getFov(); // clamp may have changed it
+                        return true;
+                    }
+                });
     }
 
     public void setUseSensors(boolean use) {
@@ -88,46 +112,53 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
     @Override
     public boolean onTouchEvent(MotionEvent e) {
 
-        switch (e.getAction()) {
+        // Always let the scale detector see every event first
+        scaleDetector.onTouchEvent(e);
 
-            case MotionEvent.ACTION_DOWN:
-                lastX = e.getX();
-                lastY = e.getY();
-                hasMoved = false;
-                break;
+        // Only handle pan / tap when NOT in a pinch gesture
+        if (!scaleDetector.isInProgress()) {
+            switch (e.getActionMasked()) {
 
-            case MotionEvent.ACTION_MOVE:
-                float dx = e.getX() - lastX;
-                float dy = e.getY() - lastY;
+                case MotionEvent.ACTION_DOWN:
+                    lastX = e.getX();
+                    lastY = e.getY();
+                    hasMoved = false;
+                    break;
 
-                if (!hasMoved && Math.abs(dx) < MOVE_THRESHOLD && Math.abs(dy) < MOVE_THRESHOLD) {
-                    break; // ignore tiny jitter before marking as a swipe
-                }
+                case MotionEvent.ACTION_MOVE:
+                    if (e.getPointerCount() > 1) break; // ignore during multi-touch
+                    float dx = e.getX() - lastX;
+                    float dy = e.getY() - lastY;
 
-                hasMoved = true;
-                if (!useSensors) {
-                    renderer.rotate(dx, dy);
-                }
-                lastX = e.getX();
-                lastY = e.getY();
-                break;
+                    if (!hasMoved && Math.abs(dx) < MOVE_THRESHOLD && Math.abs(dy) < MOVE_THRESHOLD) {
+                        break; // ignore tiny jitter before marking as a swipe
+                    }
 
-            case MotionEvent.ACTION_UP:
-                // Only trigger star-pick if the finger didn't swipe
-                if (!hasMoved) {
-                    final float nx = (e.getX() / getWidth()) * 2f - 1f;
-                    final float ny = -((e.getY() / getHeight()) * 2f - 1f);
+                    hasMoved = true;
+                    if (!useSensors) {
+                        renderer.rotate(dx, dy);
+                    }
+                    lastX = e.getX();
+                    lastY = e.getY();
+                    break;
 
-                    queueEvent(() -> {
-                        final StarRenderer.PickResult result = renderer.pickStar(nx, ny);
-                        post(() -> {
-                            if (starPickedListener != null) {
-                                starPickedListener.onStarPicked(result);
-                            }
+                case MotionEvent.ACTION_UP:
+                    // Only trigger star-pick if the finger didn't swipe
+                    if (!hasMoved) {
+                        final float nx = (e.getX() / getWidth()) * 2f - 1f;
+                        final float ny = -((e.getY() / getHeight()) * 2f - 1f);
+
+                        queueEvent(() -> {
+                            final StarRenderer.PickResult result = renderer.pickStar(nx, ny);
+                            post(() -> {
+                                if (starPickedListener != null) {
+                                    starPickedListener.onStarPicked(result);
+                                }
+                            });
                         });
-                    });
-                }
-                break;
+                    }
+                    break;
+            }
         }
 
         return true;

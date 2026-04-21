@@ -85,6 +85,12 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private volatile float angleX = 0f;
     private volatile float angleY = 0f;
 
+    // Zoom (field of view)
+    private static final float FOV_MIN =  10f;
+    private static final float FOV_MAX = 120f;
+    private volatile float fovDeg      =  60f;
+    private int cachedWidth, cachedHeight;
+
     // MVP matrices
     private final float[] mvp        = new float[16];
     private final float[] projection = new float[16];
@@ -229,13 +235,22 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
     }
 
+    /** Called by StarGLSurfaceView when the user pinches to zoom. */
+    public void setFov(float newFov) {
+        fovDeg = Math.max(FOV_MIN, Math.min(FOV_MAX, newFov));
+    }
+
+    public float getFov() { return fovDeg; }
+
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
-        surfaceWidth = width;
+        surfaceWidth  = width;
         surfaceHeight = height;
+        cachedWidth   = width;
+        cachedHeight  = height;
         float ratio = (float) width / height;
-        Matrix.perspectiveM(projection, 0, 60f, ratio, 0.1f, 100f);
+        Matrix.perspectiveM(projection, 0, fovDeg, ratio, 0.1f, 100f);
     }
 
     @Override
@@ -273,6 +288,12 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         // Horizon floor clamp disabled to allow completely free rotation
         // if (zenithDir != null) applyHorizonFloor(model, zenithDir);
+
+        // Rebuild projection each frame so FOV changes from pinch-zoom take effect immediately
+        if (cachedWidth > 0 && cachedHeight > 0) {
+            float ratio = (float) cachedWidth / cachedHeight;
+            Matrix.perspectiveM(projection, 0, fovDeg, ratio, 0.1f, 100f);
+        }
 
         Matrix.multiplyMM(temp, 0, view,       0, model, 0);
         Matrix.multiplyMM(mvp,  0, projection, 0, temp,  0);

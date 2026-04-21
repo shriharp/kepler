@@ -35,18 +35,25 @@ public class JoinDotsActivity extends AppCompatActivity implements JoinDotsView.
     }
 
     private final ZodiacConstellation[] ZODIAC = {
-        new ZodiacConstellation("Aries", new int[]{9884, 8903, 8832}),
-        new ZodiacConstellation("Taurus", new int[]{21421, 20889, 20894, 20205, 20455, 18724, 15900, 20648, 17847}),
-        new ZodiacConstellation("Gemini", new int[]{37826, 36850, 32246, 30883, 30343, 29655, 28734, 31681, 34088, 35550, 35350, 32362, 36962, 37740}),
-        new ZodiacConstellation("Cancer", new int[]{43103, 42806, 40843, 42911, 40526, 44066}),
-        new ZodiacConstellation("Leo", new int[]{49669, 50583, 54872, 57632, 54879, 49583, 50335, 48455, 47908}),
-        new ZodiacConstellation("Virgo", new int[]{65474, 66249, 68520, 72220, 63090, 63608, 61941, 57380, 60030}),
-        new ZodiacConstellation("Libra", new int[]{72622, 73714, 76333, 74785}),
-        new ZodiacConstellation("Scorpius", new int[]{80763, 78401, 78265, 78820, 77516, 77622, 77070, 76276, 77233, 78072, 77450}),
+        // Zodiac
+        new ZodiacConstellation("Aries",       new int[]{9884, 8903, 8832}),
+        new ZodiacConstellation("Taurus",      new int[]{21421, 20889, 20894, 20205, 20455, 18724, 15900, 20648, 17847}),
+        new ZodiacConstellation("Gemini",      new int[]{37826, 36850, 32246, 30883, 30343, 29655, 28734, 31681, 34088, 35550, 35350, 32362, 36962, 37740}),
+        new ZodiacConstellation("Cancer",      new int[]{43103, 42806, 40843, 42911, 40526, 44066}),
+        new ZodiacConstellation("Leo",         new int[]{49669, 50583, 54872, 57632, 54879, 49583, 50335, 48455, 47908}),
+        new ZodiacConstellation("Virgo",       new int[]{65474, 66249, 68520, 72220, 63090, 63608, 61941, 57380, 60030}),
+        new ZodiacConstellation("Libra",       new int[]{72622, 73714, 76333, 74785}),
+        new ZodiacConstellation("Scorpius",    new int[]{80763, 78401, 78265, 78820, 77516, 77622, 77070, 76276, 77233, 78072, 77450}),
         new ZodiacConstellation("Sagittarius", new int[]{89931, 90496, 89642, 90185, 88635, 87072, 93506, 92041, 89341, 93864, 92855, 93085, 93683, 94820, 95168, 96406, 98688, 98412, 98032, 95347, 95294}),
         new ZodiacConstellation("Capricornus", new int[]{100064, 100345, 104139, 105515, 106985, 107556, 105881, 102485, 102978}),
-        new ZodiacConstellation("Aquarius", new int[]{109074, 110395, 110960, 111497, 112961, 114855, 115438, 110003, 109139, 111123, 112716, 113136, 114341, 106278}),
-        new ZodiacConstellation("Pisces", new int[]{113881, 112158, 109352, 112748, 112440, 109176, 107354, 113963, 112447, 112029, 109427, 107315, 677, 1067})
+        new ZodiacConstellation("Aquarius",    new int[]{109074, 110395, 110960, 111497, 112961, 114855, 115438, 110003, 109139, 111123, 112716, 113136, 114341, 106278}),
+        new ZodiacConstellation("Pisces",      new int[]{113881, 112158, 109352, 112748, 112440, 109176, 107354, 113963, 112447, 112029, 109427, 107315, 677, 1067}),
+        // Major / Famous Constellations
+        new ZodiacConstellation("Orion",       new int[]{27989, 24436, 25336, 25930, 26311, 26727, 27366}),
+        new ZodiacConstellation("Ursa Major",  new int[]{54061, 53910, 58001, 59774, 62956, 65378, 67301}),
+        new ZodiacConstellation("Cassiopeia",  new int[]{11786, 3179, 4427, 6686, 8886}),
+        new ZodiacConstellation("Lyra",        new int[]{91262, 91971, 92420, 93356, 92833}),
+        new ZodiacConstellation("Cygnus",      new int[]{102098, 97165, 95853, 94779, 100453})
     };
 
     @Override

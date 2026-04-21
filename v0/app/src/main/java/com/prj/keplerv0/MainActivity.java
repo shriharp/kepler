@@ -124,22 +124,36 @@ public class MainActivity extends AppCompatActivity {
         glSurfaceView.setOnStarPickedListener(result -> {
             if (result == null || result.title == null) return;
             tvStarName.setText(result.title);
-            
+
             if (result.subtitle != null && !result.subtitle.isEmpty()) {
                 tvStarSubtitle.setText(result.subtitle);
                 tvStarSubtitle.setVisibility(View.VISIBLE);
             } else {
                 tvStarSubtitle.setVisibility(View.GONE);
             }
-            
+
             if (result.mythology != null && !result.mythology.isEmpty()) {
                 tvStarMythology.setText(result.mythology);
                 tvStarMythology.setVisibility(View.VISIBLE);
             } else {
                 tvStarMythology.setVisibility(View.GONE);
             }
-            
+
             starInfoCard.setVisibility(View.VISIBLE);
+
+            // --- Partial card unlock via star-gazing ---
+            boolean isKnown = false;
+            for (Card c : GameEngine.getLibrary()) {
+                if (c.name.equalsIgnoreCase(result.title)) { isKnown = true; break; }
+            }
+            if (isKnown) {
+                boolean isNew = CollectionManager.addPartialCard(this, result.title);
+                if (isNew) {
+                    Toast.makeText(this,
+                            "⭐ " + result.title + " partially unlocked!\nA half-strength card has been added to your collection.",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
         });
         starInfoCard.setOnClickListener(v -> starInfoCard.setVisibility(View.GONE));
 

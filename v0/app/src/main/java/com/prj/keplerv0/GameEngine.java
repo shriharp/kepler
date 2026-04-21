@@ -182,6 +182,26 @@ public class GameEngine {
         }
     }
 
+    /**
+     * Returns a weakened (50 % ATK/DEF) version of the named card for partial unlocks.
+     * Returns null if the card name is not found in the library.
+     */
+    public static Card getWeakenedCard(String name) {
+        for (Card c : getLibrary()) {
+            if (c.name.equals(name)) {
+                Card weak = new Card("★½ " + c.name, c.attack / 2, c.defense / 2, c.energyCost);
+                for (Ability a : c.attackAbilities) {
+                    weak.addAbility(new Ability(a.name, a.type, a.value / 2, a.energyCost, a.effect));
+                }
+                for (Ability a : c.defenseAbilities) {
+                    weak.addAbility(new Ability(a.name, a.type, a.value / 2, a.energyCost, a.effect));
+                }
+                return weak;
+            }
+        }
+        return null;
+    }
+
     public static List<Card> getLibrary() {
         List<Card> lib = new ArrayList<>();
         
@@ -268,6 +288,43 @@ public class GameEngine {
         pisces.addAbility(new Ability("Fluid Form", Ability.Type.DEFENSE, 0, 3, Ability.Effect.DODGE));
         pisces.addAbility(new Ability("Escape", Ability.Type.DEFENSE, 0, 4, Ability.Effect.DODGE));
         lib.add(pisces);
+
+        // --- Major / Famous Constellations ---
+
+        Card orion = new Card("Orion", 10, 4, 0);
+        orion.addAbility(new Ability("Hunter's Shot",         Ability.Type.ATTACK,  8, 3, Ability.Effect.IGNORE_DEF));
+        orion.addAbility(new Ability("Constellation Barrage", Ability.Type.ATTACK,  5, 2, Ability.Effect.NONE));
+        orion.addAbility(new Ability("Celestial Cloak",       Ability.Type.DEFENSE, 0, 2, Ability.Effect.DODGE));
+        orion.addAbility(new Ability("Hunter's Instinct",     Ability.Type.DEFENSE, 4, 1, Ability.Effect.NONE));
+        lib.add(orion);
+
+        Card ursaMajor = new Card("Ursa Major", 6, 11, 0);
+        ursaMajor.addAbility(new Ability("Bear Swipe", Ability.Type.ATTACK,  5, 2, Ability.Effect.NONE));
+        ursaMajor.addAbility(new Ability("Starry Maw", Ability.Type.ATTACK,  4, 3, Ability.Effect.NONE));
+        ursaMajor.addAbility(new Ability("Arctic Fur", Ability.Type.DEFENSE, 7, 2, Ability.Effect.NONE));
+        ursaMajor.addAbility(new Ability("Hibernate",  Ability.Type.DEFENSE, 6, 3, Ability.Effect.HEAL));
+        lib.add(ursaMajor);
+
+        Card cassiopeia = new Card("Cassiopeia", 7, 7, 0);
+        cassiopeia.addAbility(new Ability("Vain's Wrath", Ability.Type.ATTACK,  5, 2, Ability.Effect.POISON));
+        cassiopeia.addAbility(new Ability("Royal Cut",    Ability.Type.ATTACK,  6, 3, Ability.Effect.NONE));
+        cassiopeia.addAbility(new Ability("Queen's Parry",Ability.Type.DEFENSE, 5, 2, Ability.Effect.NONE));
+        cassiopeia.addAbility(new Ability("Regal Evasion",Ability.Type.DEFENSE, 0, 2, Ability.Effect.DODGE));
+        lib.add(cassiopeia);
+
+        Card lyra = new Card("Lyra", 5, 8, 0);
+        lyra.addAbility(new Ability("Resonant Strike",  Ability.Type.ATTACK,  4, 2, Ability.Effect.NONE));
+        lyra.addAbility(new Ability("Discordant Blast", Ability.Type.ATTACK,  3, 1, Ability.Effect.SELF_DAMAGE));
+        lyra.addAbility(new Ability("Orphic Hymn",      Ability.Type.DEFENSE, 7, 2, Ability.Effect.HEAL));
+        lyra.addAbility(new Ability("Harmonic Shield",  Ability.Type.DEFENSE, 0, 2, Ability.Effect.SHIELD));
+        lib.add(lyra);
+
+        Card cygnus = new Card("Cygnus", 8, 6, 0);
+        cygnus.addAbility(new Ability("Wing Slash",     Ability.Type.ATTACK,  6, 2, Ability.Effect.NONE));
+        cygnus.addAbility(new Ability("Northern Cross", Ability.Type.ATTACK,  4, 2, Ability.Effect.NONE));
+        cygnus.addAbility(new Ability("Swan Dive",      Ability.Type.DEFENSE, 0, 2, Ability.Effect.DODGE));
+        cygnus.addAbility(new Ability("Feather Veil",   Ability.Type.DEFENSE, 5, 2, Ability.Effect.NONE));
+        lib.add(cygnus);
 
         return lib;
     }
