@@ -6,9 +6,10 @@ import java.util.Random;
 
 public class GameEngine {
     public static class Player {
-        public int hp = 50;
-        public int energy = 1;
+        public int hp = 20;
+        public int energy = 0; // Starts at 0, updated by mana curve
         public Card activeCard;
+        public List<Card> deck = new ArrayList<>();
         public int poisonTurns = 0;
         public boolean hasShield = false;
         public int tempDefenseBonus = 0;
@@ -37,8 +38,12 @@ public class GameEngine {
 
     public void startTurn() {
         Player p = isUserTurn ? user : ai;
-        p.energy = Math.min(10, (turnCount + 1) / 2);
         
+        // Mana Curve: Gain energy equal to turnCount, capped at 3
+        int energyGain = Math.min(turnCount, 3);
+        p.energy = Math.min(p.energy + energyGain, 10);
+        
+        // Apply start-of-turn status effects
         if (p.poisonTurns > 0) {
             p.hp -= 2;
             p.poisonTurns--;
@@ -74,17 +79,22 @@ public class GameEngine {
                 defender.dodgeNext = false;
             } else {
                 int baseAtk = attacker.activeCard.attack + attacker.nextAttackBonus;
-                int baseDef = Math.max(0, defender.activeCard.defense + defender.tempDefenseBonus - defender.defenseReduction);
+                int totalAtk = baseAtk + ability.value;
+                int targetDef = Math.max(0, defender.activeCard.defense + defender.tempDefenseBonus - defender.defenseReduction);
                 
-                if (ability.effect == Ability.Effect.IGNORE_DEF) baseDef = 0;
+                if (ability.effect == Ability.Effect.IGNORE_DEF) targetDef = 0;
 
-                int damage = Math.max(0, baseAtk - baseDef) + ability.value;
+                // Engaging formula: damage reduction scales with defense (never 0)
+                float damageMultiplier = 10.0f / (10.0f + targetDef);
                 
+                // Shield cuts incoming damage in half
                 if (defender.hasShield) {
-                    damage /= 2;
+                    damageMultiplier *= 0.5f;
                     defender.hasShield = false;
                 }
 
+                int damage = Math.max(1, (int)(totalAtk * damageMultiplier));
+                
                 defender.hp -= damage;
                 attacker.nextAttackBonus = 0; 
 
@@ -95,7 +105,7 @@ public class GameEngine {
             if (ability.effect == Ability.Effect.SHIELD) {
                 attacker.hasShield = true;
             } else if (ability.effect == Ability.Effect.HEAL) {
-                attacker.hp = Math.min(50, attacker.hp + ability.value);
+                attacker.hp = Math.min(20, attacker.hp + ability.value);
             } else if (ability.effect == Ability.Effect.DODGE) {
                 attacker.dodgeNext = true;
             } else {
@@ -106,29 +116,69 @@ public class GameEngine {
         if (defender.hp <= 0) {
             listener.onGameOver(isUserTurn ? "User" : (isMultiplayer ? "Opponent" : "AI"));
         } else {
+            // AUTOMATIC TURN TRANSITION
             endTurn();
         }
     }
 
     public void endTurn() {
-        if (!isUserTurn) {
+        if (isUserTurn) {
             user.tempDefenseBonus = 0;
+        } else {
             ai.tempDefenseBonus = 0;
         }
+        
         isUserTurn = !isUserTurn;
         if (isUserTurn) turnCount++;
         startTurn();
     }
 
-    private void performAiTurn() {
-        List<Ability> available = new ArrayList<>();
-        for (Ability a : ai.activeCard.attackAbilities) if (a.energyCost <= ai.energy) available.add(a);
-        for (Ability a : ai.activeCard.defenseAbilities) if (a.energyCost <= ai.energy) available.add(a);
+    public boolean swapCard(String cardName) {
+        Player p = isUserTurn ? user : ai;
+        if (p.energy < 1) {
+            listener.onLog("Not enough energy to swap!");
+            return false;
+        }
+        for (Card c : p.deck) {
+            if (c.name.equals(cardName) && !c.name.equals(p.activeCard.name)) {
+                p.energy -= 1;
+                p.activeCard = c;
+                // Reset temporary buffs when swapping
+                p.nextAttackBonus = 0; 
+                p.tempDefenseBonus = 0;
+                p.hasShield = false;
+                p.dodgeNext = false;
+                listener.onLog((isUserTurn ? "User" : (isMultiplayer ? "Opponent" : "AI")) + " swapped to " + cardName);
+                listener.onUpdate();
+                return true;
+            }
+        }
+        return false;
+    }
 
-        if (available.isEmpty()) {
-            endTurn();
+    private void performAiTurn() {
+        Ability chosen = null;
+        if (ai.hp < 15) {
+            for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy) {
+                    chosen = a;
+                    break;
+                }
+            }
+        }
+
+        if (chosen == null) {
+            for (Ability a : ai.activeCard.attackAbilities) {
+                if (a.energyCost <= ai.energy) {
+                    if (chosen == null || a.value > chosen.value) chosen = a;
+                }
+            }
+        }
+
+        if (chosen != null) {
+            playAbility(chosen);
         } else {
-            playAbility(available.get(new Random().nextInt(available.size())));
+            endTurn(); // End turn if no move possible
         }
     }
 

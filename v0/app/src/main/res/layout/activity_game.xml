@@ -121,7 +121,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@id/ll_abilities_container"
+        app:layout_constraintBottom_toTopOf="@id/btn_swap_card"
         app:layout_constraintStart_toStartOf="parent">
 
         <TextView
@@ -141,6 +141,14 @@
             android:textColor="#0000FF"
             android:textSize="14sp" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_swap_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="Swap Card (1 Energy)"
+        app:layout_constraintBottom_toTopOf="@id/ll_abilities_container" />
 
     <LinearLayout
         android:id="@+id/ll_abilities_container"
