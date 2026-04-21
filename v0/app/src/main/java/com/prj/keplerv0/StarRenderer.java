@@ -192,11 +192,12 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         synchronized (locationLock) { lat = observerLat; lon = observerLon; }
         float[] eqToTopo = SkyCalculator.equatorialToTopocentricMatrix(lat, lon, System.currentTimeMillis());
 
-        float[] sensorInverse = new float[16];
-        Matrix.transposeM(sensorInverse, 0, rotationMatrix, 0);
-
+        // No transpose needed: The SensorManager outputs a ROW-MAJOR rotation matrix.
+        // Because OpenGL reads matrices as COLUMN-MAJOR, passing the raw array directly
+        // mathematically transposes it in-memory. Since the raw matrix maps Device->World,
+        // this natural transpose exactly yields the REQUIRED World->Device inverse mapping!
         Matrix.setIdentityM(model, 0);
-        Matrix.multiplyMM(model, 0, sensorInverse, 0, eqToTopo, 0);
+        Matrix.multiplyMM(model, 0, rotationMatrix, 0, eqToTopo, 0);
 
         float[] swipeX = new float[16], swipeY = new float[16], swipe = new float[16];
         Matrix.setRotateM(swipeX, 0, angleX, 1f, 0f, 0f);
