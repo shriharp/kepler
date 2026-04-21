@@ -96,6 +96,10 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 engine.ai.energy = Integer.parseInt(parts[2]);
                 engine.user.hp = Integer.parseInt(parts[3]);
                 engine.user.energy = Integer.parseInt(parts[4]);
+                if (parts.length > 5) {
+                    engine.ai.elementalStatus = GameEngine.ElementalStatus.valueOf(parts[5]);
+                    engine.user.elementalStatus = GameEngine.ElementalStatus.valueOf(parts[6]);
+                }
                 onUpdate();
             } else if (parts[0].equals("SWAP")) {
                 for (Card c : engine.ai.deck) {
@@ -178,7 +182,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
             engine.endTurn();
             if (isMultiplayer) {
                 socketManager.sendMessage("END_TURN");
-                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy);
+                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
             }
         });
 
@@ -195,7 +199,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 updateAbilityButtons();
                 if (isMultiplayer) {
                     socketManager.sendMessage("SWAP:" + otherCard);
-                    socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy);
+                    socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
                 }
             }
         });
@@ -255,7 +259,8 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
 
     private void setupAbilityButton(Button btn, Ability ability, int index, boolean isAttack) {
         String elementStr = ability.element != Ability.Element.NEUTRAL ? ability.element.name() : "N/A";
-        btn.setText(ability.name + "\n(" + elementStr + ")\nCost: " + ability.energyCost + "E");
+        String cdStr = ability.currentCooldown > 0 ? "\n(CD: " + ability.currentCooldown + ")" : "";
+        btn.setText(ability.name + "\n(" + elementStr + ")\nCost: " + ability.energyCost + "E" + cdStr);
         
         // Color coding
         if (isAttack) {
@@ -270,8 +275,9 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 socketManager.sendMessage("MOVE:" + index + ":" + isAttack);
             }
             engine.playAbility(ability);
+            updateAbilityButtons();
             if (isMultiplayer) {
-                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy);
+                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
             }
         });
     }
@@ -291,8 +297,8 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         pbAiEnergy.setProgress(engine.ai.energy);
 
         tvCardName.setText(engine.user.activeCard.name);
-        tvCardStats.setText("ATK: " + engine.user.activeCard.attack + "\nDEF: " + engine.user.activeCard.defense);
-        tvAiCard.setText(engine.ai.activeCard.name);
+        tvCardStats.setText("ATK: " + engine.user.activeCard.attack + " | DEF: " + engine.user.activeCard.defense + "\nStatus: " + engine.user.elementalStatus.name());
+        tvAiCard.setText(engine.ai.activeCard.name + " (" + engine.ai.elementalStatus.name() + ")");
         
         // Centralized game over check ensures both players see game over
         if (engine.user.hp <= 0) {
@@ -312,10 +318,12 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         btnSwapCard.setVisibility(engine.user.deck.size() > 1 ? View.VISIBLE : View.GONE);
         btnSwapCard.setEnabled(isMyTurn && engine.user.energy >= 1);
         
-        btnAtk1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(0).energyCost);
-        btnAtk2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(1).energyCost);
-        btnDef1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(0).energyCost);
-        btnDef2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(1).energyCost);
+        updateAbilityButtons(); // Refresh CD texts
+
+        btnAtk1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(0).energyCost && engine.user.activeCard.attackAbilities.get(0).currentCooldown == 0);
+        btnAtk2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(1).energyCost && engine.user.activeCard.attackAbilities.get(1).currentCooldown == 0);
+        btnDef1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(0).energyCost && engine.user.activeCard.defenseAbilities.get(0).currentCooldown == 0);
+        btnDef2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(1).energyCost && engine.user.activeCard.defenseAbilities.get(1).currentCooldown == 0);
     }
 
     @Override

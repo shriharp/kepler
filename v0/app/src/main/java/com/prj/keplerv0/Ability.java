@@ -11,13 +11,16 @@ public class Ability {
     public int value;
     public int energyCost;
     public Effect effect;
+    public int baseCooldown;
+    public int currentCooldown = 0;
 
-    public Ability(String name, Type type, Element element, int value, int energyCost, Effect effect) {
+    public Ability(String name, Type type, Element element, int value, int energyCost, Effect effect, int baseCooldown) {
         this.name = name;
         this.type = type;
         this.element = element;
         this.value = value;
         this.energyCost = energyCost;
         this.effect = effect;
+        this.baseCooldown = baseCooldown;
     }
 }
