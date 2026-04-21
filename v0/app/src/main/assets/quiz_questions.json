@@ -1,0 +1,103 @@
+[
+  {
+    "id": "q1",
+    "question": "Which mighty constellation represents a brave hunter shining in the night sky?",
+    "options": ["Orion", "Ursa Major", "Cassiopeia", "Pegasus"],
+    "correctIndex": 0,
+    "difficulty": "EASY",
+    "explanation": "Almost! Orion was the great hunter of Greek mythology, easily recognized by the three bright stars in his belt."
+  },
+  {
+    "id": "q2",
+    "question": "Which constellation is famous for looking like a lion?",
+    "options": ["Taurus", "Cancer", "Leo", "Aries"],
+    "correctIndex": 2,
+    "difficulty": "EASY",
+    "explanation": "Not quite! Leo represents the Nemean Lion in Greek mythology, a fierce beast defeated by Hercules."
+  },
+  {
+    "id": "q3",
+    "question": "True or False: The planet Mars is often called the Red Planet because of rust in its soil.",
+    "options": ["True", "False"],
+    "correctIndex": 0,
+    "difficulty": "EASY",
+    "explanation": "Mars owes its red color to iron oxide—the same stuff that makes rust on Earth!"
+  },
+  {
+    "id": "q4",
+    "question": "Which zodiac constellation corresponds to the scales of justice?",
+    "options": ["Virgo", "Libra", "Aquarius", "Gemini"],
+    "correctIndex": 1,
+    "difficulty": "MEDIUM",
+    "explanation": "Libra represents the scales held by Astraea, the Greek goddess of justice, who is represented by nearby Virgo."
+  },
+  {
+    "id": "q5",
+    "question": "Which star is famously known as the North Star?",
+    "options": ["Sirius", "Betelgeuse", "Polaris", "Vega"],
+    "correctIndex": 2,
+    "difficulty": "MEDIUM",
+    "explanation": "Polaris is the North Star! It sits almost directly above Earth's North Pole, so it stays fixed while other stars seem to rotate around it."
+  },
+  {
+    "id": "q6",
+    "question": "What kind of creature does the constellation Scorpius represent?",
+    "options": ["A Dragon", "A Scorpion", "An Eagle", "A Serpent"],
+    "correctIndex": 1,
+    "difficulty": "EASY",
+    "explanation": "It's a Scorpion! In myth, it was sent by the gods to battle the great hunter Orion."
+  },
+  {
+    "id": "q7",
+    "question": "Why were Scorpius and Orion placed on opposite sides of the night sky by the gods?",
+    "options": [
+      "To guard the North and South poles",
+      "Because they are best friends",
+      "So they would never fight again",
+      "To guide sailors on the seas"
+    ],
+    "correctIndex": 2,
+    "difficulty": "HARD",
+    "explanation": "According to Greek legend, Orion and the Scorpion had a fierce battle. Zeus placed them on opposite sides of the sky so they’d never clash again!"
+  },
+  {
+    "id": "q8",
+    "question": "Which of these is the brightest star in the night sky?",
+    "options": ["Sirius", "Rigel", "Polaris", "Aldebaran"],
+    "correctIndex": 0,
+    "difficulty": "HARD",
+    "explanation": "Sirius, also known as the Dog Star, is the brightest in the sky. It's part of Canis Major, the Greater Dog."
+  },
+  {
+    "id": "q9",
+    "question": "What is the name of the galaxy that contains our Solar System?",
+    "options": ["Andromeda", "The Milky Way", "Whirlpool", "Sombrero"],
+    "correctIndex": 1,
+    "difficulty": "EASY",
+    "explanation": "We live in the Milky Way! Romans called it 'Via Lactea' because it looks like a milky band of light stretching across the sky."
+  },
+  {
+    "id": "q10",
+    "question": "Who is the mother of the Greek princess Andromeda in mythology?",
+    "options": ["Athena", "Hera", "Cassiopeia", "Aphrodite"],
+    "correctIndex": 2,
+    "difficulty": "HARD",
+    "explanation": "Cassiopeia was the vain queen who boasted about her beauty, which led to her daughter Andromeda being chained to a rock until Perseus saved her."
+  },
+  {
+    "id": "q11",
+    "question": "The 'Big Dipper' is not a constellation itself. Which constellation is it a part of?",
+    "options": ["Ursa Minor (Little Bear)", "Ursa Major (Great Bear)", "Draco (Dragon)", "Bootes (Herdsman)"],
+    "correctIndex": 1,
+    "difficulty": "MEDIUM",
+    "explanation": "The Big Dipper is an 'asterism' (a pattern of stars) which forms the tail and hindquarters of Ursa Major, the Great Bear."
+  },
+  {
+    "id": "q12",
+    "question": "Which Roman god of the sea lends his name to the farthest known planet from our Sun?",
+    "options": ["Jupiter", "Mars", "Neptune", "Mercury"],
+    "correctIndex": 2,
+    "difficulty": "MEDIUM",
+    "explanation": "Neptune relies on the Roman god of the sea, chosen because of the planet's deep, beautiful blue color!"
+  }
+]

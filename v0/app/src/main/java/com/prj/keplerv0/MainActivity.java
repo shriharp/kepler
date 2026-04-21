@@ -128,6 +128,9 @@ public class MainActivity extends AppCompatActivity {
             } else if (id == R.id.nav_battle) {
                 startActivity(new Intent(this, MultiplayerSetupActivity.class));
 
+            } else if (id == R.id.nav_quiz) {
+                startActivity(new Intent(this, com.prj.keplerv0.quiz.QuizActivity.class));
+
             } else if (id == R.id.nav_enable_touch) {
                 gyroscopeEnabled = !gyroscopeEnabled;
                 glSurfaceView.setUseSensors(gyroscopeEnabled);
