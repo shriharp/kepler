@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import android.widget.Button;
+import android.graphics.Color;
 
 public class DeckSelectionActivity extends AppCompatActivity {
 
@@ -41,9 +43,18 @@ public class DeckSelectionActivity extends AppCompatActivity {
             return;
         }
 
-        rv.setAdapter(new DeckAdapter(availableCards, card -> {
+        Button btnConfirm = findViewById(R.id.btn_confirm_deck);
+        List<String> selectedCards = new ArrayList<>();
+
+        DeckAdapter adapter = new DeckAdapter(availableCards, selectedCards, () -> {
+            btnConfirm.setText("Confirm Deck (" + selectedCards.size() + "/2)");
+            btnConfirm.setEnabled(selectedCards.size() == 2);
+        });
+        rv.setAdapter(adapter);
+
+        btnConfirm.setOnClickListener(v -> {
             Intent intent = new Intent(DeckSelectionActivity.this, GameActivity.class);
-            intent.putExtra("selected_card", card.name);
+            intent.putStringArrayListExtra("selected_cards", new ArrayList<>(selectedCards));
             
             // Forward multiplayer info if present
             if (getIntent().hasExtra("is_multiplayer")) {
@@ -54,16 +65,18 @@ public class DeckSelectionActivity extends AppCompatActivity {
             
             startActivity(intent);
             finish();
-        }));
+        });
     }
 
     private static class DeckAdapter extends RecyclerView.Adapter<DeckAdapter.ViewHolder> {
-        interface OnCardClickListener { void onCardClick(Card card); }
+        interface OnSelectionChangedListener { void onSelectionChanged(); }
         private List<Card> cards;
-        private OnCardClickListener listener;
+        private List<String> selectedCards;
+        private OnSelectionChangedListener listener;
 
-        DeckAdapter(List<Card> cards, OnCardClickListener listener) {
+        DeckAdapter(List<Card> cards, List<String> selectedCards, OnSelectionChangedListener listener) {
             this.cards = cards;
+            this.selectedCards = selectedCards;
             this.listener = listener;
         }
 
@@ -79,7 +92,25 @@ public class DeckSelectionActivity extends AppCompatActivity {
             Card c = cards.get(position);
             holder.tvName.setText(c.name);
             holder.tvStatus.setText("ATK: " + c.attack + " | DEF: " + c.defense);
-            holder.itemView.setOnClickListener(v -> listener.onCardClick(c));
+            
+            if (selectedCards.contains(c.name)) {
+                holder.itemView.setBackgroundColor(Color.DKGRAY);
+            } else {
+                holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+            }
+
+            holder.itemView.setOnClickListener(v -> {
+                if (selectedCards.contains(c.name)) {
+                    selectedCards.remove(c.name);
+                } else if (selectedCards.size() < 2) {
+                    selectedCards.add(c.name);
+                } else {
+                    Toast.makeText(v.getContext(), "You can only select 2 cards!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                notifyItemChanged(position);
+                listener.onSelectionChanged();
+            });
         }
 
         @Override

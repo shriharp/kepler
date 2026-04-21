@@ -95,6 +95,9 @@ public class GameSocketManager {
                 mainHandler.post(() -> {
                     if (listener != null) listener.onMessageReceived(msg);
                 });
+            } else {
+                Log.d("KeplerNet", "Stream closed remotely.");
+                break;
             }
         }
     }
