@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Top scrim: opaque at top, fades to transparent at bottom -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient
+        android:startColor="#EE000510"
+        android:endColor="#00000510"
+        android:angle="270" />
+</shape>
