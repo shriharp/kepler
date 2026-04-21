@@ -6,8 +6,11 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.net.wifi.p2p.WifiP2pManager;
+import android.content.Context;
 import androidx.appcompat.app.AppCompatActivity;
 import java.util.List;
 import java.util.Random;
@@ -15,12 +18,15 @@ import java.util.Random;
 public class GameActivity extends AppCompatActivity implements GameEngine.GameUpdateListener {
 
     private GameEngine engine;
-    private TextView tvUserHp, tvUserEnergy, tvAiHp, tvAiEnergy, tvAiCard, tvCardName, tvCardStats, tvLog, tvTurnIndicator;
+    private TextView tvUserHp, tvUserEnergy, tvAiHp, tvAiEnergy, tvAiCard, tvCardName, tvCardStats, tvTurnIndicator;
+    private TextView tvEffectAnim;
+    private ProgressBar pbUserHp, pbUserEnergy, pbAiHp, pbAiEnergy;
     private Button btnAtk1, btnAtk2, btnDef1, btnDef2, btnEndTurn, btnSwapCard;
     
     private boolean isMultiplayer = false;
     private boolean opponentCardReceived = false;
     private boolean gameStarted = false;
+    private boolean isGameOver = false;
     private GameSocketManager socketManager;
     private Handler syncHandler = new Handler(Looper.getMainLooper());
     private Runnable syncRunnable;
@@ -44,9 +50,8 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         engine.isMultiplayer = true;
         socketManager = GameSocketManager.getInstance();
         
-        // Define Turn based on Role
+        // Turn will be randomized by host and synced during START_GAME
         boolean isHost = getIntent().getBooleanExtra("is_host", false);
-        engine.isUserTurn = isHost; 
 
         socketManager.setListener(msg -> {
             Log.d("KeplerNet", "Game Received: " + msg);
@@ -71,11 +76,18 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                     socketManager.sendMessage("CARD:" + myDeckStr.toString());
                     
                     if (isHost) {
-                        socketManager.sendMessage("START_GAME");
+                        boolean hostGoesFirst = new Random().nextBoolean();
+                        engine.isUserTurn = hostGoesFirst;
+                        socketManager.sendMessage("START_GAME:" + !hostGoesFirst);
                         startGameFlow();
                     }
                 }
             } else if (parts[0].equals("START_GAME")) {
+                if (parts.length > 1) {
+                    engine.isUserTurn = Boolean.parseBoolean(parts[1]);
+                } else {
+                    engine.isUserTurn = false;
+                }
                 startGameFlow();
             } else if (parts[0].equals("END_TURN")) {
                 engine.endTurn();
@@ -149,8 +161,12 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         tvAiCard = findViewById(R.id.tv_ai_card);
         tvCardName = findViewById(R.id.tv_card_name);
         tvCardStats = findViewById(R.id.tv_card_stats);
-        tvLog = findViewById(R.id.tv_game_log);
         tvTurnIndicator = findViewById(R.id.tv_turn_indicator);
+        tvEffectAnim = findViewById(R.id.tv_effect_anim);
+        pbUserHp = findViewById(R.id.pb_user_hp);
+        pbUserEnergy = findViewById(R.id.pb_user_energy);
+        pbAiHp = findViewById(R.id.pb_ai_hp);
+        pbAiEnergy = findViewById(R.id.pb_ai_energy);
         btnAtk1 = findViewById(R.id.btn_atk1);
         btnAtk2 = findViewById(R.id.btn_atk2);
         btnDef1 = findViewById(R.id.btn_def1);
@@ -238,7 +254,16 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
     }
 
     private void setupAbilityButton(Button btn, Ability ability, int index, boolean isAttack) {
-        btn.setText(ability.name + "\n(" + ability.energyCost + " E)");
+        String elementStr = ability.element != Ability.Element.NEUTRAL ? ability.element.name() : "N/A";
+        btn.setText(ability.name + "\n(" + elementStr + ")\nCost: " + ability.energyCost + "E");
+        
+        // Color coding
+        if (isAttack) {
+            btn.setTextColor(0xFFFF7777); // Light Red
+        } else {
+            btn.setTextColor(0xFF77AAFF); // Light Blue
+        }
+        
         btn.setOnClickListener(v -> {
             if (!engine.isUserTurn) return;
             if (isMultiplayer) {
@@ -253,13 +278,30 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
 
     @Override
     public void onUpdate() {
-        tvUserHp.setText("Your HP: " + engine.user.hp);
-        tvUserEnergy.setText("Your Energy: " + engine.user.energy);
-        tvAiHp.setText(isMultiplayer ? "Opponent HP: " + engine.ai.hp : "AI HP: " + engine.ai.hp);
-        tvAiEnergy.setText(isMultiplayer ? "Opponent Energy: " + engine.ai.energy : "AI Energy: " + engine.ai.energy);
+        tvUserHp.setText(engine.user.hp + "/20");
+        pbUserHp.setProgress(engine.user.hp);
+        
+        tvUserEnergy.setText(engine.user.energy + "/10");
+        pbUserEnergy.setProgress(engine.user.energy);
+        
+        tvAiHp.setText(engine.ai.hp + "/20");
+        pbAiHp.setProgress(engine.ai.hp);
+        
+        tvAiEnergy.setText(engine.ai.energy + "/10");
+        pbAiEnergy.setProgress(engine.ai.energy);
+
         tvCardName.setText(engine.user.activeCard.name);
-        tvCardStats.setText("ATK: " + engine.user.activeCard.attack + " | DEF: " + engine.user.activeCard.defense);
-        tvAiCard.setText(isMultiplayer ? "Opponent Card: " + engine.ai.activeCard.name : "AI Card: " + engine.ai.activeCard.name);
+        tvCardStats.setText("ATK: " + engine.user.activeCard.attack + "\nDEF: " + engine.user.activeCard.defense);
+        tvAiCard.setText(engine.ai.activeCard.name);
+        
+        // Centralized game over check ensures both players see game over
+        if (engine.user.hp <= 0) {
+            onGameOver(isMultiplayer ? "Opponent" : "AI");
+            return;
+        } else if (engine.ai.hp <= 0) {
+            onGameOver("User");
+            return;
+        }
 
         boolean isMyTurn = engine.isUserTurn && gameStarted;
         if (isMultiplayer && !opponentCardReceived) isMyTurn = false;
@@ -278,24 +320,68 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
 
     @Override
     public void onGameOver(String winner) {
+        if (isGameOver) return;
+        isGameOver = true;
+        
         String displayWinner = winner;
         if (isMultiplayer) {
             if (winner.equals("User")) displayWinner = "You";
             else displayWinner = "Opponent";
         }
+        
+        onLog("Game Over! Winner: " + displayWinner);
         Toast.makeText(this, "Game Over! Winner: " + displayWinner, Toast.LENGTH_LONG).show();
-        finish();
+        
+        // Delay finish to allow final socket messages (SYNC, MOVE) to flush
+        new Handler(Looper.getMainLooper()).postDelayed(this::finish, 3500);
     }
 
     @Override
     public void onLog(String message) {
-        tvLog.append(message + "\n");
-        findViewById(R.id.sv_log).post(() -> ((android.widget.ScrollView)findViewById(R.id.sv_log)).fullScroll(View.FOCUS_DOWN));
+        TextView tvLog = findViewById(R.id.tv_game_log);
+        if (tvLog != null) {
+            tvLog.append(message + "\n");
+        }
+        
+        // Floating text animation for effects
+        tvEffectAnim.setText(message);
+        tvEffectAnim.setVisibility(View.VISIBLE);
+        tvEffectAnim.setAlpha(1f);
+        tvEffectAnim.setScaleX(0.5f);
+        tvEffectAnim.setScaleY(0.5f);
+        tvEffectAnim.setTranslationY(100f);
+        
+        tvEffectAnim.animate()
+            .translationY(-100f)
+            .scaleX(1.2f)
+            .scaleY(1.2f)
+            .alpha(0f)
+            .setDuration(1500)
+            .withEndAction(() -> tvEffectAnim.setVisibility(View.INVISIBLE))
+            .start();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         syncHandler.removeCallbacks(syncRunnable);
+        
+        if (isMultiplayer) {
+            // Close the socket to free the port
+            if (socketManager != null) {
+                socketManager.close();
+            }
+            
+            // Tear down the Wi-Fi Direct group so future games don't get stuck
+            try {
+                WifiP2pManager manager = (WifiP2pManager) getSystemService(Context.WIFI_P2P_SERVICE);
+                if (manager != null) {
+                    WifiP2pManager.Channel channel = manager.initialize(this, getMainLooper(), null);
+                    manager.removeGroup(channel, null);
+                }
+            } catch (Exception e) {
+                Log.e("KeplerNet", "Error cleaning up P2P group: " + e.getMessage());
+            }
+        }
     }
 }
