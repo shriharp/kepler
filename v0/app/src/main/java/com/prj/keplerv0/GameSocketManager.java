@@ -47,6 +47,7 @@ public class GameSocketManager {
                 serverSocket.setReuseAddress(true);
                 Log.d("KeplerNet", "Server: Waiting for client...");
                 socket = serverSocket.accept();
+                socket.setTcpNoDelay(true);
                 Log.d("KeplerNet", "Server: Client connected: " + socket.getInetAddress());
                 setupStreams();
                 serverSocket.close(); // Close server socket after one connection
@@ -64,6 +65,7 @@ public class GameSocketManager {
                 while (retries > 0) {
                     try {
                         socket = new Socket(hostAddress, PORT);
+                        socket.setTcpNoDelay(true);
                         Log.d("KeplerNet", "Client: Connected to server");
                         setupStreams();
                         return;
