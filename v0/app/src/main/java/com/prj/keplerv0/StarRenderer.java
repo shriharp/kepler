@@ -21,6 +21,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
     private final Context context;
     private boolean useDeviceOrientation = true;
+    private boolean isResourceSavingMode = false;
 
     // Full catalog (immutable after onSurfaceCreated)
     private float[]              allVertices;
@@ -54,9 +55,11 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     private int         constellationCount;
     private int         program;
 
-    // OpenGL state - horizon ring
+    // OpenGL state - horizon ring + ground mesh
     private FloatBuffer horizBuffer;
     private int         horizCount;
+    private FloatBuffer groundBuffer;
+    private int         groundCount;
     private int         horizProgram;
 
     // Cached zenith direction (celestial frame).
@@ -136,6 +139,10 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     public void rotate(float dx, float dy) {
         angleX += dy * 0.3f;
         angleY += dx * 0.3f;
+    }
+    
+    public void setResourceSavingMode(boolean saving) {
+        this.isResourceSavingMode = saving;
     }
 
     public void setObserverLocation(double lat, double lon) {
@@ -284,18 +291,61 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         GLES20.glVertexAttribPointer(pos, 3, GLES20.GL_FLOAT, false, 0, constellationBuffer);
         GLES20.glDrawArrays(GLES20.GL_LINES, 0, constellationCount);
 
-        // Draw horizon ring (subtle blue glow at the very bottom of the view)
-        if (horizBuffer != null && horizCount > 0) {
-            GLES20.glUseProgram(horizProgram);
-            int hPos   = GLES20.glGetAttribLocation(horizProgram, "aPos");
-            int hMvp   = GLES20.glGetUniformLocation(horizProgram, "uMVP");
-            int hColor = GLES20.glGetUniformLocation(horizProgram, "uColor");
-            GLES20.glUniformMatrix4fv(hMvp, 1, false, mvp, 0);
-            GLES20.glUniform4f(hColor, 0.45f, 0.72f, 1.0f, 0.55f);
-            GLES20.glEnableVertexAttribArray(hPos);
-            GLES20.glVertexAttribPointer(hPos, 3, GLES20.GL_FLOAT, false, 0, horizBuffer);
-            GLES20.glLineWidth(2.5f);
-            GLES20.glDrawArrays(GLES20.GL_LINE_LOOP, 0, horizCount);
+        if (isResourceSavingMode) {
+            // Draw ground mesh (covers everything below horizon line)
+            if (groundBuffer != null && groundCount > 0) {
+                GLES20.glUseProgram(horizProgram);
+                int hPos   = GLES20.glGetAttribLocation(horizProgram, "aPos");
+                int hMvp   = GLES20.glGetUniformLocation(horizProgram, "uMVP");
+                int hColor = GLES20.glGetUniformLocation(horizProgram, "uColor");
+                
+                float[] groundModel = new float[16];
+                Matrix.setIdentityM(groundModel, 0);
+                Matrix.multiplyMM(groundModel, 0, rotationMatrix, 0, groundModel, 0);
+                if (!useDeviceOrientation) {
+                    Matrix.multiplyMM(groundModel, 0, swipe, 0, groundModel, 0);
+                }
+                float[] groundMvp = new float[16];
+                Matrix.multiplyMM(temp, 0, view, 0, groundModel, 0);
+                Matrix.multiplyMM(groundMvp, 0, projection, 0, temp, 0);
+
+                // Solid dark colour to act as terrain silhouette
+                GLES20.glUniformMatrix4fv(hMvp, 1, false, groundMvp, 0);
+                GLES20.glUniform4f(hColor, 0.02f, 0.04f, 0.08f, 1.0f);
+                
+                GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+                GLES20.glEnableVertexAttribArray(hPos);
+                GLES20.glVertexAttribPointer(hPos, 3, GLES20.GL_FLOAT, false, 0, groundBuffer);
+                GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, groundCount);
+                GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+            }
+
+            // Draw horizon ring (subtle blue glow slightly above the ground)
+            if (horizBuffer != null && horizCount > 0) {
+                GLES20.glUseProgram(horizProgram);
+                int hPos   = GLES20.glGetAttribLocation(horizProgram, "aPos");
+                int hMvp   = GLES20.glGetUniformLocation(horizProgram, "uMVP");
+                int hColor = GLES20.glGetUniformLocation(horizProgram, "uColor");
+                
+                // To stick to the same terrain mapping, apply groundMvp
+                float[] groundModel = new float[16];
+                Matrix.setIdentityM(groundModel, 0);
+                Matrix.multiplyMM(groundModel, 0, rotationMatrix, 0, groundModel, 0);
+                if (!useDeviceOrientation) {
+                    Matrix.multiplyMM(groundModel, 0, swipe, 0, groundModel, 0);
+                }
+                float[] groundMvp = new float[16];
+                Matrix.multiplyMM(temp, 0, view, 0, groundModel, 0);
+                Matrix.multiplyMM(groundMvp, 0, projection, 0, temp, 0);
+                
+                GLES20.glUniformMatrix4fv(hMvp, 1, false, groundMvp, 0);
+                GLES20.glUniform4f(hColor, 0.45f, 0.72f, 1.0f, 0.55f);
+                
+                GLES20.glEnableVertexAttribArray(hPos);
+                GLES20.glVertexAttribPointer(hPos, 3, GLES20.GL_FLOAT, false, 0, horizBuffer);
+                GLES20.glLineWidth(2.5f);
+                GLES20.glDrawArrays(GLES20.GL_LINE_STRIP, 0, horizCount);
+            }
         }
 
         // --- Label Projection ---
@@ -307,6 +357,16 @@ public class StarRenderer implements GLSurfaceView.Renderer {
             if (constCentroids != null) {
                 for (ConstellationCentroid cc : constCentroids) {
                     if (cc.x == 0 && cc.y == 0 && cc.z == 0) continue; // no member matched
+                    
+                    if (isResourceSavingMode) {
+                        float tx = eqToTopo[0]*cc.x + eqToTopo[4]*cc.y + eqToTopo[8]*cc.z;
+                        float ty = eqToTopo[1]*cc.x + eqToTopo[5]*cc.y + eqToTopo[9]*cc.z;
+                        float tz = eqToTopo[2]*cc.x + eqToTopo[6]*cc.y + eqToTopo[10]*cc.z;
+                        float azRad = (float) Math.atan2(tx, ty);
+                        if (azRad < 0) azRad += 2.0f * (float)Math.PI;
+                        if (tz < Math.sin(getTerrainAltitudeRad(azRad))) continue; // Occluded
+                    }
+                    
                     Matrix.multiplyMV(v, 0, mvp, 0, new float[]{cc.x, cc.y, cc.z, 1f}, 0);
                     if (v[3] > 0) {
                         float ndcX = v[0] / v[3];
@@ -414,18 +474,41 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         // 1. Determine which stars are above the horizon
         boolean[] visible   = new boolean[totalStars];
-        double[]  altitudes = new double[totalStars];
         HashSet<Integer> visHips = new HashSet<>(totalStars);
         int visCount = 0;
 
+        float[] eqToTopo = SkyCalculator.equatorialToTopocentricMatrix(lat, lon, now);
+
         for (int i = 0; i < totalStars; i++) {
-            double alt = SkyCalculator.altitude(allRaDeg[i], allDecDeg[i], lat, lon, now);
-            altitudes[i] = alt;
+            boolean isVis = true;
             
-            // Allow ALL stars to be visible so the complete sphere is rendered
-            visible[i] = true;
-            visCount++;
-            visHips.add(allHips[i]);
+            if (isResourceSavingMode) {
+                float sx = allVertices[i * 4];
+                float sy = allVertices[i * 4 + 1];
+                float sz = allVertices[i * 4 + 2];
+                
+                float tx = eqToTopo[0]*sx + eqToTopo[4]*sy + eqToTopo[8]*sz;
+                float ty = eqToTopo[1]*sx + eqToTopo[5]*sy + eqToTopo[9]*sz;
+                float tz = eqToTopo[2]*sx + eqToTopo[6]*sy + eqToTopo[10]*sz;
+                
+                float azRad = (float) Math.atan2(tx, ty);
+                if (azRad < 0) azRad += 2.0f * (float)Math.PI;
+                
+                float terrainAltRad = getTerrainAltitudeRad(azRad);
+                float terrainZ = (float) Math.sin(terrainAltRad);
+                
+                if (tz < terrainZ) {
+                    isVis = false; // Occluded by terrain
+                } else if (allMags[i] > 4.5f) {
+                    isVis = false; // Filter dim stars for performance
+                }
+            }
+            
+            visible[i] = isVis;
+            if (isVis) {
+                visCount++;
+                visHips.add(allHips[i]);
+            }
         }
 
         // 2. Build filtered vertex arrays with atmospheric extinction
@@ -461,7 +544,7 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         float[] zenith = SkyCalculator.zenithDirection(lat, lon, now);
         zenithDir = zenith;   // read in onDrawFrame on the same GL thread
-        buildHorizonRing(zenith);
+        buildTerrainEnvironment();
 
         // Notify MainActivity (main thread) of the new visible star count
         if (rebuildListener != null) {
@@ -546,44 +629,63 @@ public class StarRenderer implements GLSurfaceView.Renderer {
     }
 
     // -------------------------------------------------------------------------
-    // OpenGL buffer builders
+    // Terrain and Geometry 
     // -------------------------------------------------------------------------
-
-    /**
-     * Builds a horizon ring (GL_LINE_LOOP) at altitude = 0 deg.
-     * The ring is the great circle perpendicular to the zenith.
-     */
-    private void buildHorizonRing(float[] N) {
-        float[][] basis = horizonBasis(N);
-        float[] T1 = basis[0], T2 = basis[1];
-
-        final int   numPts = 72;
-        final float r      = 10f;
-
-        float[] ring = new float[numPts * 3];
-        for (int i = 0; i < numPts; i++) {
-            double theta = 2.0 * Math.PI * i / numPts;
-            float  ct    = (float) Math.cos(theta);
-            float  st    = (float) Math.sin(theta);
-            ring[i * 3]     = r * (ct * T1[0] + st * T2[0]);
-            ring[i * 3 + 1] = r * (ct * T1[1] + st * T2[1]);
-            ring[i * 3 + 2] = r * (ct * T1[2] + st * T2[2]);
-        }
-
-        horizBuffer = ByteBuffer.allocateDirect(ring.length * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer();
-        horizBuffer.put(ring).position(0);
-        horizCount = numPts;
+    
+    private float getTerrainAltitudeRad(float azRad) {
+        float altDeg = 1.0f; // base ground level
+        altDeg += 2.0f * (float)Math.sin(azRad * 2);
+        altDeg += 1.0f * (float)Math.sin(azRad * 5 + 1.0f);
+        altDeg += 0.5f * (float)Math.sin(azRad * 11 + 2.0f);
+        altDeg += 3.0f * (float)Math.max(0, Math.cos(azRad - 1.5f)); // mountain peak
+        return (float)Math.toRadians(altDeg);
     }
 
-    /** Returns two orthonormal vectors spanning the horizon plane (perpendicular to N). */
-    private float[][] horizonBasis(float[] N) {
-        float[] T1 = normalize(
-                Math.abs(N[0]) < 0.9f
-                        ? new float[]{ 0,    N[2], -N[1] }
-                        : new float[]{ -N[2], 0,    N[0] });
-        float[] T2 = normalize(cross(N, T1));
-        return new float[][]{ T1, T2 };
+    /**
+     * Builds both the glowing horizon line and the dense ground mesh, pinned to the Topocentric frame.
+     */
+    private void buildTerrainEnvironment() {
+        final int numSteps = 72; // 5 degrees per step
+        float[] ringVerts = new float[ (numSteps + 1) * 3 ];
+        float[] meshVerts = new float[ (numSteps + 1) * 2 * 3 ];
+        
+        int rIdx = 0;
+        int mIdx = 0;
+
+        for (int i = 0; i <= numSteps; i++) {
+            float azRad = (float) (2.0 * Math.PI * i / numSteps);
+            float tAlt = getTerrainAltitudeRad(azRad);
+            
+            float cosAlt = (float) Math.cos(tAlt);
+            float tx = (float) (Math.sin(azRad) * cosAlt);
+            float ty = (float) (Math.cos(azRad) * cosAlt);
+            float tz = (float) Math.sin(tAlt);
+            
+            // Horizon Ring points
+            ringVerts[rIdx++] = tx;
+            ringVerts[rIdx++] = ty;
+            ringVerts[rIdx++] = tz;
+            
+            // Ground Mesh points
+            meshVerts[mIdx++] = tx * 0.99f; // slightly inset top to avoid z-fighting with the ring
+            meshVerts[mIdx++] = ty * 0.99f;
+            meshVerts[mIdx++] = tz * 0.99f;
+            
+            // Deep cylinder skirting down to cover nadir
+            meshVerts[mIdx++] = tx * 0.99f;
+            meshVerts[mIdx++] = ty * 0.99f;
+            meshVerts[mIdx++] = -1.0f; 
+        }
+
+        horizBuffer = ByteBuffer.allocateDirect(ringVerts.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        horizBuffer.put(ringVerts).position(0);
+        horizCount = numSteps + 1;
+        
+        groundBuffer = ByteBuffer.allocateDirect(meshVerts.length * 4)
+                .order(ByteOrder.nativeOrder()).asFloatBuffer();
+        groundBuffer.put(meshVerts).position(0);
+        groundCount = (numSteps + 1) * 2;
     }
 
     private void uploadStarBuffer(float[] verts) {

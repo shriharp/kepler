@@ -31,6 +31,12 @@
             android:id="@+id/nav_enable_touch"
             android:icon="@drawable/ic_rotate"
             android:title="Enable Touch Mode" />
+            
+        <item
+            android:id="@+id/nav_resource_saving"
+            android:icon="@android:drawable/ic_menu_save"
+            android:title="Resource Saving"
+            android:checkable="true" />
     </group>
 
 </menu>

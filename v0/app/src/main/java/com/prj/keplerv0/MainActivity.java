@@ -2,6 +2,7 @@ package com.prj.keplerv0;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -101,6 +102,14 @@ public class MainActivity extends AppCompatActivity {
         // so all XML overlay views (HUD, star card, labels) render on top of it.
         glSurfaceView = new StarGLSurfaceView(this);
         glSurfaceView.getRenderer().setOverlayView(skyOverlayView);
+        
+        SharedPreferences prefs = getSharedPreferences("KeplerPrefs", MODE_PRIVATE);
+        boolean isResourceSaving = prefs.getBoolean("resource_saving", false);
+        glSurfaceView.getRenderer().setResourceSavingMode(isResourceSaving);
+        
+        // initialize menu checkbox
+        navigationView.getMenu().findItem(R.id.nav_resource_saving).setChecked(isResourceSaving);
+
         container.addView(glSurfaceView, 0,
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -165,6 +174,19 @@ public class MainActivity extends AppCompatActivity {
                         ? "Gyroscope on — point your phone at the sky"
                         : "Touch mode — swipe to explore";
                 Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            } else if (id == R.id.nav_resource_saving) {
+                boolean newState = !item.isChecked();
+                item.setChecked(newState);
+                
+                SharedPreferences localPrefs = getSharedPreferences("KeplerPrefs", MODE_PRIVATE);
+                localPrefs.edit().putBoolean("resource_saving", newState).apply();
+                
+                if (glSurfaceView != null) {
+                    glSurfaceView.getRenderer().setResourceSavingMode(newState);
+                    glSurfaceView.queueEvent(() -> glSurfaceView.getRenderer().requestRebuild());
+                }
+                
+                Toast.makeText(this, "Resource Saving Mode: " + (newState ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
             }
 
             drawerLayout.closeDrawer(GravityCompat.START);
