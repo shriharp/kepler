@@ -100,7 +100,9 @@ public class StarGLSurfaceView extends GLSurfaceView implements SensorEventListe
                 }
 
                 hasMoved = true;
-                renderer.rotate(dx, dy);
+                if (!useSensors) {
+                    renderer.rotate(dx, dy);
+                }
                 lastX = e.getX();
                 lastY = e.getY();
                 break;

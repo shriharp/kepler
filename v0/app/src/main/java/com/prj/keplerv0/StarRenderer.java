@@ -104,10 +104,20 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
     public StarRenderer(Context context) {
         this.context = context;
-        Matrix.setIdentityM(rotationMatrix, 0);
+        // Default to looking North, holding phone vertically
+        rotationMatrix[0] = 1; rotationMatrix[4] = 0; rotationMatrix[8]  =  0; rotationMatrix[12] = 0;
+        rotationMatrix[1] = 0; rotationMatrix[5] = 0; rotationMatrix[9]  = -1; rotationMatrix[13] = 0;
+        rotationMatrix[2] = 0; rotationMatrix[6] = 1; rotationMatrix[10] =  0; rotationMatrix[14] = 0;
+        rotationMatrix[3] = 0; rotationMatrix[7] = 0; rotationMatrix[11] =  0; rotationMatrix[15] = 1;
     }
 
-    public void setUseDeviceOrientation(boolean use) { this.useDeviceOrientation = use; }
+    public void setUseDeviceOrientation(boolean use) {
+        this.useDeviceOrientation = use;
+        if (use) {
+            angleX = 0f;
+            angleY = 0f;
+        }
+    }
     public void setRotationMatrix(float[] matrix)    { System.arraycopy(matrix, 0, rotationMatrix, 0, 16); }
 
     public void rotate(float dx, float dy) {
@@ -175,32 +185,31 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
-        // Build model matrix from sensor + swipe
+        // Build Base View mapping (World -> Device)
         Matrix.setLookAtM(view, 0, 0, 0, 0,  0, 0, -1,  0, 1, 0);
-        Matrix.setIdentityM(model, 0);
 
-        if (useDeviceOrientation) {
-            float[] remapped = new float[16];
-            android.hardware.SensorManager.remapCoordinateSystem(
-                    rotationMatrix,
-                    android.hardware.SensorManager.AXIS_X,
-                    android.hardware.SensorManager.AXIS_Y,
-                    remapped);
-            Matrix.multiplyMM(model, 0, remapped, 0, model, 0);
-        } else {
-            Matrix.multiplyMM(model, 0, rotationMatrix, 0, model, 0);
-        }
+        double lat, lon;
+        synchronized (locationLock) { lat = observerLat; lon = observerLon; }
+        float[] eqToTopo = SkyCalculator.equatorialToTopocentricMatrix(lat, lon, System.currentTimeMillis());
+
+        float[] sensorInverse = new float[16];
+        Matrix.transposeM(sensorInverse, 0, rotationMatrix, 0);
+
+        Matrix.setIdentityM(model, 0);
+        Matrix.multiplyMM(model, 0, sensorInverse, 0, eqToTopo, 0);
 
         float[] swipeX = new float[16], swipeY = new float[16], swipe = new float[16];
         Matrix.setRotateM(swipeX, 0, angleX, 1f, 0f, 0f);
         Matrix.setRotateM(swipeY, 0, angleY, 0f, 1f, 0f);
         Matrix.multiplyMM(swipe, 0, swipeY, 0, swipeX, 0);
-        Matrix.multiplyMM(model, 0, swipe, 0, model, 0);
+        
+        // Touch to rotate is disabled when gyro is enabled
+        if (!useDeviceOrientation) {
+            Matrix.multiplyMM(model, 0, swipe, 0, model, 0);
+        }
 
-        // Horizon floor clamp: keeps look-direction >= 30 deg above horizon so
-        // the bottom edge of the 60-deg vertical FOV never dips below altitude 0.
-        // The user only ever sees the starry sky, never empty black space below.
-        if (zenithDir != null) applyHorizonFloor(model, zenithDir);
+        // Horizon floor clamp disabled to allow completely free rotation
+        // if (zenithDir != null) applyHorizonFloor(model, zenithDir);
 
         Matrix.multiplyMM(temp, 0, view,       0, model, 0);
         Matrix.multiplyMM(mvp,  0, projection, 0, temp,  0);
@@ -290,11 +299,11 @@ public class StarRenderer implements GLSurfaceView.Renderer {
         for (int i = 0; i < totalStars; i++) {
             double alt = SkyCalculator.altitude(allRaDeg[i], allDecDeg[i], lat, lon, now);
             altitudes[i] = alt;
-            if (alt > -0.5) {   // -0.5 deg accounts for atmospheric refraction
-                visible[i] = true;
-                visCount++;
-                visHips.add(allHips[i]);
-            }
+            
+            // Allow ALL stars to be visible so the complete sphere is rendered
+            visible[i] = true;
+            visCount++;
+            visHips.add(allHips[i]);
         }
 
         // 2. Build filtered vertex arrays with atmospheric extinction
@@ -304,9 +313,10 @@ public class StarRenderer implements GLSurfaceView.Renderer {
 
         for (int i = 0; i < totalStars; i++) {
             if (!visible[i]) continue;
-            double alt = altitudes[i];
-            // Full brightness above 15 deg, fades to 25% at the horizon
-            float ext = (alt >= 15.0) ? 1.0f : (float) Math.max(0.25, alt / 15.0);
+            
+            // Keep brightness uniform since we are drawing the full sphere
+            // and the user can simply look structurally "down" through the Earth
+            float ext = 1.0f;
 
             visVerts[vi * 4]     = allVertices[i * 4];
             visVerts[vi * 4 + 1] = allVertices[i * 4 + 1];
