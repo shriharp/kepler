@@ -65,7 +65,7 @@
             android:orientation="vertical"
             android:padding="8dp"
             android:elevation="4dp">
-            
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -111,7 +111,7 @@
                 android:max="20"
                 android:progress="20"
                 android:progressTint="#FF4444" />
-                
+
             <TextView
                 android:id="@+id/tv_ai_hp"
                 android:layout_width="wrap_content"
@@ -139,7 +139,7 @@
                 android:max="10"
                 android:progress="0"
                 android:progressTint="@color/accent_blue" />
-                
+
             <TextView
                 android:id="@+id/tv_ai_stamina"
                 android:layout_width="wrap_content"
@@ -174,7 +174,7 @@
             android:letterSpacing="0.1"
             android:visibility="invisible"
             android:elevation="10dp"/>
-            
+
         <ScrollView
             android:id="@+id/sv_log"
             android:layout_width="match_parent"
@@ -224,7 +224,7 @@
                 android:max="20"
                 android:progress="20"
                 android:progressTint="#00FFAA" />
-                
+
             <TextView
                 android:id="@+id/tv_user_hp"
                 android:layout_width="wrap_content"
@@ -252,7 +252,7 @@
                 android:max="10"
                 android:progress="0"
                 android:progressTint="@color/accent_blue" />
-                
+
             <TextView
                 android:id="@+id/tv_user_stamina"
                 android:layout_width="wrap_content"
@@ -272,7 +272,7 @@
             android:orientation="vertical"
             android:padding="8dp"
             android:elevation="4dp">
-            
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -292,7 +292,7 @@
                 android:gravity="center"
                 android:fontFamily="sans-serif-light"
                 android:letterSpacing="0.05"/>
-                
+
             <TextView
                 android:id="@+id/tv_card_stats"
                 android:layout_width="wrap_content"
