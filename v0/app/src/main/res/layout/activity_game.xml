@@ -324,7 +324,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:orientation="vertical"
-        app:layout_constraintBottom_toTopOf="@id/btn_end_turn">
+        app:layout_constraintBottom_toTopOf="@id/ll_bottom_actions">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -383,15 +383,52 @@
         </LinearLayout>
     </LinearLayout>
 
-    <Button
-        android:id="@+id/btn_end_turn"
+    <!-- Bottom action row: EP display + Emergency + End Turn -->
+    <LinearLayout
+        android:id="@+id/ll_bottom_actions"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="END TURN"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:letterSpacing="0.1"
-        android:background="@drawable/bg_ability_button"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="4dp"
+        android:gravity="center_vertical"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- Energy Points balance -->
+        <TextView
+            android:id="@+id/tv_energy_points_battle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚡ 0 EP"
+            android:textColor="#FFD700"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-light"
+            android:paddingStart="4dp"
+            android:paddingEnd="8dp" />
+
+        <!-- Emergency Recovery -->
+        <Button
+            android:id="@+id/btn_emergency_recovery"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="⚡ Recovery"
+            android:textColor="#FFD700"
+            android:textSize="11sp"
+            android:background="@drawable/bg_ability_button"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp" />
+
+        <!-- End Turn -->
+        <Button
+            android:id="@+id/btn_end_turn"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="END TURN"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:letterSpacing="0.1"
+            android:background="@drawable/bg_ability_button" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

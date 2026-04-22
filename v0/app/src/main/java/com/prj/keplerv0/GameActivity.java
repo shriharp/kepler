@@ -1,5 +1,6 @@
 package com.prj.keplerv0;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,10 +19,10 @@ import java.util.Random;
 public class GameActivity extends AppCompatActivity implements GameEngine.GameUpdateListener {
 
     private GameEngine engine;
-    private TextView tvUserHp, tvUserStamina, tvAiHp, tvAiStamina, tvAiCard, tvCardName, tvCardStats, tvTurnIndicator;
+    private TextView tvUserHp, tvUserStamina, tvAiHp, tvAiStamina, tvAiCard, tvCardName, tvCardStats, tvTurnIndicator, tvEnergyPoints;
     private TextView tvEffectAnim;
     private ProgressBar pbUserHp, pbUserStamina, pbAiHp, pbAiStamina;
-    private Button btnAtk1, btnAtk2, btnDef1, btnDef2, btnEndTurn, btnSwapCard;
+    private Button btnAtk1, btnAtk2, btnDef1, btnDef2, btnEndTurn, btnSwapCard, btnEmergency;
     
     private boolean isMultiplayer = false;
     private boolean opponentCardReceived = false;
@@ -171,12 +172,14 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         pbUserStamina = findViewById(R.id.pb_user_stamina);
         pbAiHp = findViewById(R.id.pb_ai_hp);
         pbAiStamina = findViewById(R.id.pb_ai_stamina);
+        tvEnergyPoints = findViewById(R.id.tv_energy_points_battle);
         btnAtk1 = findViewById(R.id.btn_atk1);
         btnAtk2 = findViewById(R.id.btn_atk2);
         btnDef1 = findViewById(R.id.btn_def1);
         btnDef2 = findViewById(R.id.btn_def2);
         btnEndTurn = findViewById(R.id.btn_end_turn);
         btnSwapCard = findViewById(R.id.btn_swap_card);
+        btnEmergency = findViewById(R.id.btn_emergency_recovery);
 
         btnEndTurn.setOnClickListener(v -> {
             engine.endTurn();
@@ -203,6 +206,61 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 }
             }
         });
+
+        btnEmergency.setOnClickListener(v -> showEmergencyRecoveryDialog());
+    }
+
+    /** Opens the Emergency Recovery dialog — lets player spend EP to survive. */
+    private void showEmergencyRecoveryDialog() {
+        if (!engine.isUserTurn) {
+            Toast.makeText(this, "Can only use recovery on your turn!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int epBalance = PersistenceManager.getInstance(this).getEnergyPoints();
+        String fullLabel = engine.fullRecoveryUsed
+                ? "Full Recovery — Already Used"
+                : "Full Recovery (+" + BattleRecoveryManager.FULL_HEAL_HP + " HP, +"
+                  + BattleRecoveryManager.FULL_HEAL_STAMINA + " Stamina) — "
+                  + BattleRecoveryManager.COST_FULL_RECOVERY + " EP";
+        new AlertDialog.Builder(this)
+                .setTitle("Emergency Recovery")
+                .setMessage("Your Energy Points: " + epBalance + " EP\n\nChoose a recovery option:")
+                .setPositiveButton("+" + BattleRecoveryManager.HEAL_HP_AMOUNT + " HP ("
+                        + BattleRecoveryManager.COST_RESTORE_HP + " EP)", (d, w) ->
+                    handleRecoveryResult(BattleRecoveryManager.restoreHp(this, engine),
+                            "+" + BattleRecoveryManager.HEAL_HP_AMOUNT + " HP restored"))
+                .setNeutralButton("+" + BattleRecoveryManager.HEAL_STAMINA_AMOUNT + " Stamina ("
+                        + BattleRecoveryManager.COST_RESTORE_STAMINA + " EP)", (d, w) ->
+                    handleRecoveryResult(BattleRecoveryManager.restoreStamina(this, engine),
+                            "+" + BattleRecoveryManager.HEAL_STAMINA_AMOUNT + " Stamina restored"))
+                .setNegativeButton(fullLabel, (d, w) -> {
+                    if (engine.fullRecoveryUsed) {
+                        Toast.makeText(this, "Full Recovery already used this battle.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    handleRecoveryResult(BattleRecoveryManager.fullRecovery(this, engine),
+                            "Full Recovery activated!");
+                })
+                .show();
+    }
+
+    private void handleRecoveryResult(BattleRecoveryManager.RecoveryResult result, String successMsg) {
+        switch (result) {
+            case SUCCESS:
+                Toast.makeText(this, successMsg, Toast.LENGTH_SHORT).show();
+                onLog("[Recovery] " + successMsg);
+                onUpdate();
+                break;
+            case INSUFFICIENT_EP:
+                Toast.makeText(this, "Not enough Energy Points!", Toast.LENGTH_SHORT).show();
+                break;
+            case FULL_RECOVERY_ALREADY_USED:
+                Toast.makeText(this, "Full Recovery already used this battle.", Toast.LENGTH_SHORT).show();
+                break;
+            case RECOVERY_NOT_NEEDED:
+                Toast.makeText(this, "Already at full HP / Stamina.", Toast.LENGTH_SHORT).show();
+                break;
+        }
     }
 
     private void setupGame() {
@@ -324,6 +382,16 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         btnAtk2.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.attackAbilities.get(1).staminaCost && engine.user.activeCard.attackAbilities.get(1).currentCooldown == 0);
         btnDef1.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.defenseAbilities.get(0).staminaCost && engine.user.activeCard.defenseAbilities.get(0).currentCooldown == 0);
         btnDef2.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.defenseAbilities.get(1).staminaCost && engine.user.activeCard.defenseAbilities.get(1).currentCooldown == 0);
+
+        // Refresh Energy Points balance
+        if (tvEnergyPoints != null) {
+            int ep = PersistenceManager.getInstance(this).getEnergyPoints();
+            tvEnergyPoints.setText("⚡ " + ep + " EP");
+        }
+        // Emergency button always visible on your turn — player decides if they need it
+        if (btnEmergency != null) {
+            btnEmergency.setEnabled(isMyTurn);
+        }
     }
 
     @Override

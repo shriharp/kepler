@@ -26,6 +26,8 @@ public class GameEngine {
     public boolean isUserTurn = true;
     public int turnCount = 1;
     public boolean isMultiplayer = false;
+    /** True once the player has used the 200 EP Full Recovery — limited to once per battle. */
+    public boolean fullRecoveryUsed = false;
 
     public interface GameUpdateListener {
         void onUpdate();

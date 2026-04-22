@@ -32,6 +32,7 @@ public class QuizActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isInteractionLocked = false;
+    private long questionStartTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +56,7 @@ public class QuizActivity extends AppCompatActivity {
 
     private void updateEnergyDisplay() {
         int energy = RewardManager.getEnergy(this);
-        tvEnergy.setText("Energy: " + energy);
+        tvEnergy.setText("Energy Points: " + energy + " EP");
     }
 
     private void loadNextQuestion() {
@@ -114,6 +115,8 @@ public class QuizActivity extends AppCompatActivity {
         animator.setDuration(400);
         animator.setInterpolator(new OvershootInterpolator(1.2f));
         animator.start();
+
+        questionStartTime = System.currentTimeMillis();
     }
 
     private void onOptionSelected(Button selectedBtn, int selectedIndex, int correctIndex) {
@@ -122,11 +125,27 @@ public class QuizActivity extends AppCompatActivity {
 
         boolean isCorrect = quizManager.submitAnswer(selectedIndex);
 
+        // Record time taken for adaptive difficulty
+        long timeTaken = System.currentTimeMillis() - questionStartTime;
+        quizManager.recordAnswerTiming(isCorrect, timeTaken);
+
         if (isCorrect) {
             selectedBtn.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_quiz_btn_correct));
-            RewardManager.addEnergy(this, 10);
+
+            // Difficulty-scaled EP reward
+            DifficultyManager.Difficulty diff = quizManager.getCurrentDifficulty();
+            int epReward;
+            switch (diff) {
+                case HARD:   epReward = 35; break;
+                case MEDIUM: epReward = 20; break;
+                default:     epReward = 10; break;
+            }
+            RewardManager.addEnergy(this, epReward);
             updateEnergyDisplay();
-            
+
+            // Show reward feedback
+            Toast.makeText(this, "+" + epReward + " Energy Points!", Toast.LENGTH_SHORT).show();
+
             handler.postDelayed(this::loadNextQuestion, 1000);
         } else {
             selectedBtn.setBackground(ContextCompat.getDrawable(this, R.drawable.bg_quiz_btn_incorrect));

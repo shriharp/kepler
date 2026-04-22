@@ -124,4 +124,15 @@ public class QuizManager {
     public DifficultyManager.Difficulty getCurrentDifficulty() {
         return difficultyManager.getCurrentDifficulty();
     }
+
+    /**
+     * Called by QuizActivity after submitAnswer to record precise UI-measured timing.
+     * submitAnswer already records timing from questionStartTime, so this is a no-op
+     * that keeps the call site clean without double-recording.
+     */
+    public void recordAnswerTiming(boolean correct, long timeTakenMs) {
+        // Intentionally no-op: timing is already recorded inside submitAnswer().
+        // This method exists so QuizActivity can pass the timing it measured
+        // independently if the internal clock is ever separated in future.
+    }
 }
