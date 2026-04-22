@@ -1,0 +1,517 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{rotating}
+\usepackage{pifont}
+\newcommand{\cmark}{\checkmark}
+\newcommand{\xmark}{\texttimes}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Kepler: A Scientifically-Grounded Constellation Card Game\\
+Integrating Real Astronomical Data with Strategic Gameplay}
+
+\author{
+  \IEEEauthorblockN{Ashwin Kushwaha, Shreyas Bibhuty, Pranav Joshi, Shrihar Pande}
+  \IEEEauthorblockA{\textit{School of Computer Engineering} \\
+  \textit{Manipal Institute of Technology}, Manipal, India} \\
+  {230953208,230953234,230953248,230953256}
+}
+
+\maketitle
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{abstract}
+We present \textit{Kepler}, an Android-based mobile application that integrates real-world astronomical data with a strategic card battle game engine. Named in honour of the astronomer Johannes Kepler, the system bridges the gap between educational stargazing tools and engaging card-battler games through four tightly coupled subsystems: (1) a physics-accurate 3D star renderer driven by the HYG stellar catalogue and device gyroscope orientation; (2) a touch-based constellation tracing system (\texttt{JoinDotsView}) that gates card acquisition behind verified geometric interaction with real star patterns; (3) a telemetry-driven adaptive quiz engine that adjusts difficulty without remote inference; and (4) a turn-based card battle engine supporting both AI and local TCP multiplayer, with elemental reaction mechanics and status effects. Each unlocked card carries combat attributes and elemental abilities derived from classical celestial lore. Kepler demonstrates that scientifically accurate data can serve as a compelling, non-arbitrary foundation for game mechanics, offering a replicable model for educational gamification in mobile applications.
+\end{abstract}
+
+\begin{IEEEkeywords}
+educational games, gamification, astronomy, mobile application, Android, card game, HYG catalogue, constellation, turn-based combat, scientific data
+\end{IEEEkeywords}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+
+The intersection of education and interactive entertainment, commonly referred to as \textit{edutainment}, has long been explored as a mechanism for increasing engagement with academic subject matter \cite{prensky2001digital}. In the domain of astronomy outreach, applications such as Star Walk and SkySafari have demonstrated that real-time sky mapping can attract broad audiences; however, these tools remain primarily observational and provide little incentive for repeated or deep engagement \cite{schaller2012mobile}.
+
+Concurrently, digital collectible card games (CCGs) such as \textit{Hearthstone} \cite{hearthstone} and roguelike deck-builders such as \textit{Slay the Spire} \cite{slayspire} have proven that strategic card mechanics can sustain long-term player engagement. The critical limitation of these games, however, is that card acquisition is typically decoupled from any real-world knowledge or skill, cards are earned via in-game currency, loot boxes, or random drops.
+
+\textit{Kepler} proposes a novel synthesis: card acquisition is gated behind a scientifically grounded interaction loop in which players must correctly trace the geometric star patterns of real constellations, using positional data sourced from the HYG stellar catalogue. Completing this tracing task simultaneously teaches the morphology of recognized constellations and rewards the player with a new combat card bearing thematically appropriate statistics. This bidirectional design, where astronomy informs gameplay and gameplay incentivises astronomy, is the central contribution of this work.
+
+The remainder of this paper is structured as follows. Section~\ref{sec:related} surveys related work. Section~\ref{sec:design} presents the game design rationale. Section~\ref{sec:architecture} describes the system architecture. Section~\ref{sec:implementation} details the current implementation. Section~\ref{sec:roadmap} outlines the future development roadmap. Section~\ref{sec:discussion} discusses implications and limitations, and Section~\ref{sec:conclusion} concludes.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Astronomical Visualisation and Sky-Mapping Applications}
+Mobile applications for astronomy visualisation have matured considerably in visual fidelity and data accuracy. \textit{Stellarium Mobile} \cite{stellarium} and \textit{Star Walk 2} \cite{starwalk2} render real-time sky maps using RA/Dec coordinates drawn from catalogues including Hipparcos, providing AR overlays for constellation identification. These tools are primarily observational: the user views and identifies celestial objects, but successful identification does not modify any persistent game state, unlock new content, or alter future interactions. Accordingly, there is no acquisition loop, no combat outcome, and no incentive structure that rewards deep or repeated engagement beyond the intrinsic appeal of sky-watching.
+
+\subsection{Mobile Astronomy Learning and Assessment Applications}
+Astronomy learning applications increasingly layer structured assessment on top of sky visualisation. \textit{Sky Academy} \cite{skyacademy} organises learning around the 88 IAU constellations via progressive recognition quizzes, multi-level practice modes, and preset zodiac pattern aids, making it a direct comparator for any system that targets constellation knowledge. However, even in apps of this kind, knowledge assessment remains functionally separate from game-state progression: a correct quiz answer yields a score but does not unlock a durable in-app asset or alter the player's strategic options in a combat or collection system. Kepler differs precisely on this point---recognition is not the endpoint but rather the trigger for a state transition that permanently expands the player's card collection and combat repertoire.
+
+\subsection{Constellation Tracing and Visual Pattern Learning}
+Traditional astronomy pedagogy relies on star charts, planispheres, and structured observation exercises to teach learners to locate and name constellations through spatial pattern recognition \cite{lcd_constellations}. Research in this area confirms that active engagement with star-pattern geometry, rather than passive labelling, improves retention of constellation morphology. These methods are, however, generally static or worksheet-based: completing a tracing exercise produces no downstream consequence beyond the exercise itself. \textit{Trace the Stars} \cite{tracestars} extends this idea to a tabletop roll-and-write format in which dice-rolled coordinates are plotted and connected for scoring, demonstrating that the tracing mechanic itself can support engagement. Kepler translates this insight into an interactive Android mechanic---the \texttt{JoinDotsView} touch-tracing system---in which a successfully completed constellation trace constitutes a verified state transition that modifies the player's collection, their deck composition options, and their available combat abilities.
+
+\subsection{Astronomy-Themed Games and Board Games}
+\textit{Astromania} \cite{astromania} is a physical card game designed by astronomers that teaches space science through icon-matching mechanics simulating research workflows; players earn bonuses by pairing observation tools with celestial objects. While scientifically motivated, it is non-digital and lacks dynamic mechanics such as energy systems, status effects, or adaptive AI. \textit{Stellar} \cite{stellar_card} is a two-player card game with an astronomy theme centred on observation and notebook collection, again without strategic battler mechanics or live astronomical data. These games demonstrate audience appetite for astronomy-themed card systems but do not integrate real stellar catalogues as a mechanical substrate.
+
+\subsection{Serious Games, Gamification, and Intrinsic Motivation}
+Deterding et al.\ \cite{deterding2011game} define gamification as the application of game-design elements to non-game contexts; Hamari et al.\ \cite{hamari2014does} provide empirical support for the motivational efficacy of such elements, particularly when they generate a meaningful sense of challenge and achievement. Systematic literature reviews \cite{serious_games_review} document growth in educational simulations across health, culture, and STEM domains, but identify a scarcity of mobile, Android-native implementations that blend real catalogue data with strategic gameplay. McCauley et al.\ \cite{mccauley2025} find that non-digital astronomy games can foster engaging learning environments for physics concepts while highlighting an unmet need for narrative-driven mobile applications that unite strategic depth with educational scaffolding. Complementary work on game-based and narrative learning \cite{starfarer_thesis} examines how such approaches can teach astronomy concepts, yet does not address the use of verified stellar catalogues as a mechanical substrate.
+
+Kepler's dual-loop architecture is grounded in Malone's theory of intrinsic motivation \cite{malone1981toward}, wherein challenge and fantasy are most effective when they are meaningfully coupled rather than cosmetically layered. In Kepler, real astronomical knowledge is not optional trivia but a prerequisite for progression: the educational interaction directly determines acquisition, rarity, and combat utility. This design is closer to learning-by-doing than to quiz-only astronomy apps, because incorrect or incomplete tracing withholds the card entirely. To the best of our knowledge, no prior system combines catalogue-driven constellation tracing, data-derived card rarity, and combat-oriented progression within a single Android application.
+
+\subsection{Real-World Scientific Data as a Game Design Substrate}
+The use of geospatial data in location-based games---most notably \textit{Pok\'emon GO} \cite{pioneer2016pokemongo} and \textit{Ingress}---has demonstrated that grounding game mechanics in real-world data increases player motivation and physical engagement. Citizen-science platforms such as Galaxy Zoo \cite{lintott2008galaxy} further show that non-experts can perform meaningful interactions with authentic scientific data when the task is appropriately scaffolded. Kepler extends this paradigm to the domain of astrometry: apparent visual magnitude and equatorial coordinates drawn from the HYG catalogue \cite{hyg} serve as mechanically relevant variables rather than decorative background data. In particular, the planned rarity system (Section~\ref{sec:roadmap}) derives card power tiers directly from the mean apparent magnitude of each constellation's principal stars---a measured physical quantity---rather than from arbitrary designer assignment. This makes Kepler's card hierarchy more principled and more resistant to the power inflation endemic to many CCGs.
+
+\subsection{Digital Card Battle Systems and Progression Models}
+\textit{Stormbound} \cite{stormbound} is a representative mobile CCG featuring real-time PvP deck-building and energy-gated ability systems whose mechanics are structurally similar to Kepler's combat engine. \textit{Hearthstone} \cite{hearthstone} and \textit{Slay the Spire} \cite{slayspire} similarly demonstrate that card-based systems with progressive energy economies, status effects, and elemental interactions sustain long-term engagement. The critical distinction between these systems and Kepler is that their card acquisition is driven entirely by in-game currency or random drops, with no grounding in real-world data or educational content. Kepler's battle engine is structurally familiar to players of these CCGs while differing fundamentally in that every card in the player's collection is a direct consequence of a verified astronomical interaction.
+
+\subsection{Comparative Analysis}
+Table~\ref{tab:comparison} presents a feature comparison matrix of Kepler against representative existing systems across the dimensions most pertinent to its design goals.
+
+\begin{table}[htbp]
+\caption{Feature Comparison Matrix: Kepler vs.\ Related Systems}
+\label{tab:comparison}
+\centering
+\renewcommand{\arraystretch}{2}
+\setlength{\tabcolsep}{1pt}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{0.1\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}>{\centering\arraybackslash}p{0.13\linewidth}@{}}
+\toprule
+\textbf{System} &
+\rotatebox{90}{\textbf{Real Star Catalog}}&
+\rotatebox{90}{\textbf{Interactive Tracing}}&
+\rotatebox{90}{\textbf{Card/Combat Engine}}&
+\rotatebox{90}{\textbf{Data-Driven Rarity}}&
+\rotatebox{90}{\textbf{Mobile (Android)}}&
+\rotatebox{90}{\textbf{Lore-Based Abilities}}&
+\rotatebox{90}{\textbf{Tracing Gates Unlock}}\\
+\midrule
+Stellarium Mobile \cite{stellarium}   & \checkmark & \texttimes & \texttimes & \texttimes & \checkmark & \texttimes & \texttimes \\
+Star Walk 2 \cite{starwalk2}          & \checkmark & \texttimes & \texttimes & \texttimes & \checkmark & \texttimes & \texttimes \\
+Sky Academy \cite{skyacademy}         & \texttimes & \texttimes & \texttimes & \texttimes & \checkmark & \texttimes & \texttimes \\
+Astromania \cite{astromania}          & \texttimes & \texttimes & \checkmark & \texttimes & \texttimes & \texttimes & \texttimes \\
+Trace the Stars \cite{tracestars}     & \texttimes & \checkmark & \texttimes & \texttimes & \texttimes & \texttimes & \texttimes \\
+Stormbound \cite{stormbound}          & \texttimes & \texttimes & \checkmark & \texttimes & \checkmark & \texttimes & \texttimes \\
+Hearthstone \cite{hearthstone}        & \texttimes & \texttimes & \checkmark & \texttimes & \checkmark & \texttimes & \texttimes \\
+\textbf{Kepler (Ours)}                & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent The matrix confirms that while individual features exist in isolation across the landscape---accurate star data in stargazing apps, combat mechanics in CCGs, constellation tracing in board games---to the best of our knowledge no prior system integrates all seven dimensions simultaneously. Kepler's central novelty lies in this synthesis: scientifically grounded acquisition, data-derived balance, and strategic combat within a single Android application.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Game Design Rationale}
+\label{sec:design}
+
+\subsection{The Dual-Loop Design}
+Kepler is structured around two interlocking engagement loops, illustrated in Fig.~\ref{fig:dual_loop}.
+
+% FIGURE PLACEHOLDER: Dual Engagement Loop
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{architecture.png}
+    \caption{Combat Engine Turn Lifecycle}
+    \label{fig:architecture}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{engagement.png}
+    \caption{Kepler's dual engagement loop. The outer astronomy loop gates card acquisition; the inner combat loop drives strategic play.}
+    \label{fig:dual_loop}
+\end{figure}
+
+The \textit{outer loop} (Astronomy Loop) requires the player to locate a target constellation in an accurate 3D night sky, physically trace its canonical star-to-star connections on the \texttt{JoinDotsView} canvas, and thereby earn a full card unlock. The \textit{inner loop} (Combat Loop) uses the player's accumulated card library to engage in strategic turn-based combat, with elemental reactions, status effects, and an energy economy. This structure ensures that every card in the player's deck is a direct consequence of a verified astronomical interaction, not a random drop or currency purchase.
+
+\subsection{Constellation Tracing as an Educational Mechanic}
+Physical tracing of a constellation's skeletal geometry was chosen over tap-to-unlock or quiz-gated designs because it encodes spatial memory of the constellation's shape. A player who has dragged a path from Scorpius' head to its curved tail retains that morphology more durably than one who selected a correct multiple-choice answer. The mechanic is additionally gated: tapping a constellation in the sky renderer grants only a \textit{Partial Unlock} (reduced card power); completing the full trace escalates it to a \textit{Full Unlock}, preserving a meaningful incentive gradient.
+
+\subsection{Thematic Translation of Celestial Lore}
+A core design principle of Kepler is that no mechanic is arbitrary. Each constellation's combat identity is derived from its mythological and astronomical heritage. Table~\ref{tab:cards} enumerates the current zodiac card roster, elements, and signature abilities.
+
+\begin{table}[htbp]
+\caption{Zodiac Constellation Cards and Thematic Abilities}
+\label{tab:cards}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+\textbf{Constellation} & \textbf{Element} & \textbf{Signature Ability} & \textbf{ATK} & \textbf{DEF} \\
+\midrule
+Aries        & Fire  & Horn Charge      & 8 & 4 \\
+Taurus       & Earth & Earth Slam       & 7 & 6 \\
+Gemini       & Air   & Illusion Split   & 5 & 5 \\
+Cancer       & Water & Shell Shield     & 3 & 9 \\
+Leo          & Fire  & Solar Roar       & 9 & 3 \\
+Virgo        & Earth & Harvest Mend     & 5 & 6 \\
+Libra        & Air   & Scales of Equity & 6 & 6 \\
+Scorpius     & Water & Venom Strike     & 8 & 4 \\
+Sagittarius  & Fire  & Archer's Mark    & 9 & 2 \\
+Capricorn    & Earth & Granite Bastion  & 4 & 8 \\
+Aquarius     & Water & Tidal Surge      & 6 & 5 \\
+Pisces       & Water & Regenerate       & 4 & 7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Elemental families map to distinct effect classes: Fire inflicts burst damage; Earth provides persistent defensive buffs; Water applies healing or poison-over-time; Air grants evasion or debuff effects. Five elemental \textit{reaction} pairs produce compound outcomes—for instance, Fire $+$ Water triggers \textit{Vaporize} (1.5$\times$ damage multiplier), while Earth $+$ Air triggers \textit{Sandstorm} (inflicts temporary blindness via \texttt{dodgeNext}). These reactions add a layer of strategic synergy absent from flat-element systems.
+
+\subsection{Adaptive Quiz as Educational Reinforcement}
+The adaptive quiz reinforces lore and scientific facts about constellations already encountered in the astronomy loop. A lightweight heuristic engine—requiring no network inference or ML model—adjusts question difficulty in real time based on three telemetry signals: answer accuracy, response speed, and answer streak. This design choice prioritises universal accessibility: the engine runs entirely on-device, with no cold-start latency and no dependency on network availability.
+
+\subsection{Energy Economy}
+Combat employs a progressive energy system. Players begin a match with 0 Energy. The first two turns each generate 2 Energy; from turn 3 onward, generation increases to 3 Energy per turn, capped at 10. Low-cost abilities (1--2 Energy) are available immediately; high-impact abilities (4--6 Energy) require deliberate saving, introducing a temporal planning dimension absent in flat-resource systems.
+% ─────────────────────────────────────────────────────────────────────────────
+\section{System Architecture}
+\label{sec:architecture}
+
+% FIGURE PLACEHOLDER: System Architecture Diagram
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{architecture.png}
+    \caption{High-level architecture of Kepler, showing the four principal subsystems and their interactions}
+    \label{fig:architecture}
+\end{figure}
+
+Kepler's architecture is divided into four principal subsystems: the Astronomy Rendering Engine, the Constellation Unlock System, the Adaptive Quiz Engine, and the Card Battle Engine. All subsystems share a common Data Layer and Persistence System, described below.
+
+\subsection{Astronomy Rendering Subsystem}
+
+\textbf{Star Rendering Pipeline.}
+\texttt{StarCatalog.java} loads statically bundled star data from the HYG catalogue, exposing per-star 3D vertices, RA/Dec coordinates, and apparent visual magnitude. \texttt{StarRenderer.java} draws each star as an OpenGL ES 2.0 \texttt{GL\_POINTS} primitive; \texttt{gl\_PointSize} is computed inversely proportional to magnitude so that brighter stars render as larger points. The Model-View-Projection (MVP) matrix is updated each frame from device orientation data, binding the gyroscope sensor's rotation matrix (transformed from device space to world space) directly to the GL thread.
+
+\textbf{Topocentric Coordinate Conversion.}
+\texttt{SkyCalculator.java} converts static equatorial coordinates (RA/Dec) to dynamic topocentric altitude/azimuth using the user's geographic location (latitude/longitude) and system time. This ensures stars appear at physically correct positions for the user's actual sky.
+
+\textbf{Label Rendering (\texttt{SkyOverlayView}).}
+A transparent Android \texttt{View} is composited above the \texttt{GLSurfaceView}. \texttt{StarRenderer} projects each star's 3D world vector through the current MVP matrix to obtain Normalized Device Coordinates, which are then converted to 2D screen positions. Labels are sorted by magnitude priority (constellation centroids bypass this and receive highest priority). An AABB collision check using \texttt{RectF.intersects} discards incoming labels whose bounding boxes overlap already-drawn ones, preventing visual clutter at 60 FPS without external libraries.
+
+\textbf{Resource-Saving Mode.}
+When enabled, three optimisations activate: (1) \textit{Dim-star culling}---stars with magnitude $> 4.5$ are excluded from the render buffer before GPU upload; (2) \textit{Horizon culling}---a procedural terrain altitude is computed as a composite sine/cosine wave over the local azimuth angle, rendered as a \texttt{GL\_TRIANGLE\_STRIP} ground mesh with a \texttt{GL\_LINE\_STRIP} horizon glow; (3) \textit{Below-horizon culling}---stars whose transformed $z$-coordinate satisfies $t_z < \sin(\phi_{\text{terrain}}(\theta))$, where $\theta$ is the viewing azimuth, are skipped during vertex loading.
+
+% FIGURE PLACEHOLDER: Star Rendering Pipeline
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{star.png}
+    \caption{Star Rendering Pipeline}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Constellation Unlock Subsystem}
+
+\texttt{JoinDotsView.java} implements the tracing mechanic. On \texttt{ACTION\_DOWN} and \texttt{ACTION\_MOVE}, a Euclidean nearest-neighbour search with radius 80\,px snaps the touch cursor to the closest \texttt{StarPoint}. A real-time clipping mask (\texttt{Path.addCircle}) renders a 2.5$\times$ magnifier 250\,px above the touch point, preserving visibility of fine star connections as the user's finger occludes the screen. On \texttt{ACTION\_UP}, the engine validates whether the stroke connects a pair of \texttt{StarPoint} nodes matching an undrawn \texttt{targetLine}; valid connections are committed and snapped visually. Completion is triggered when \texttt{drawnLines.size() $\geq$ targetLines.size()}.
+
+\textbf{Partial vs.\ Full Unlock.}
+\texttt{CollectionManager.java} maintains two unlock states per constellation via \texttt{SharedPreferences}: \texttt{KEY\_PARTIAL} (awarded on first tap in the sky renderer) and \texttt{KEY\_CARDS} (awarded on successful trace completion). Cards in partial-unlock state are subjected to \texttt{getWeakenedCard()}, which halves all offensive statistics, preserving a meaningful power incentive for completing the trace.
+
+% FIGURE PLACEHOLDER: Constellation Tracing State Flow
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{constellation.png}
+    \caption{Constellation Tracing State Flow}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Adaptive Quiz Subsystem}
+
+\texttt{QuizManager.java} parses \texttt{quiz\_questions.json} into Easy, Medium, and Hard question pools, shuffled on load. \texttt{DifficultyManager.java} computes a \texttt{confidenceScore} after each answer from three real-time telemetry signals:
+
+\begin{align}
+  S_{\text{speed}} &= 1.0 - \frac{\max(0,\; \bar{t} - 3000)}{7000} \label{eq:speed}\\
+  S_{\text{streak}} &= \min\!\left(1,\; \frac{k}{5}\right) \label{eq:streak}\\
+  \text{confidence} &= 0.5 \cdot A + 0.2 \cdot S_{\text{speed}} + 0.3 \cdot S_{\text{streak}} \label{eq:confidence}
+\end{align}
+
+\noindent where $A$ is the cumulative accuracy ratio, $\bar{t}$ is the mean response time in milliseconds, and $k$ is the current consecutive-correct streak. Difficulty transitions occur at: $\text{confidence} < 0.40 \Rightarrow$ \textsc{Easy}; $0.40 \leq \text{confidence} < 0.75 \Rightarrow$ \textsc{Medium}; $\text{confidence} \geq 0.75 \Rightarrow$ \textsc{Hard}. The engine is entirely on-device, requiring no network calls or bundled ML models.
+
+% FIGURE PLACEHOLDER: Adaptive Quiz Difficulty Flow
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{quiz.png}
+    \caption{Adaptive Quiz Difficulty Flow}
+    \label{fig:architecture}
+\end{figure}
+
+\subsection{Card Battle Subsystem}
+
+\textbf{Data Model.}
+Each \texttt{Card} object holds base HP, ATK, DEF, Energy Cost, and two ordered \texttt{Ability} lists (offensive and defensive). Each \texttt{Ability} encapsulates an \texttt{Effect} enum (\texttt{POISON}, \texttt{SHIELD}, \texttt{HEAL}, \texttt{DODGE}, \texttt{IGNORE\_DEF}, \texttt{BURNING}), a magnitude, and a duration for persistent effects.
+
+\textbf{Combat Damage Formula.}
+\begin{equation}
+  D = \max\!\left(1,\; \left\lfloor \left(\text{ATK}_{\text{base}} + \Delta_{\text{bonus}} + \Delta_{\text{ability}}\right) \cdot \frac{10}{10 + \text{DEF}_{\text{eff}}} \cdot \delta_{\text{shield}} \right\rfloor \right)
+\end{equation}
+where $\text{DEF}_{\text{eff}} = \max(0, \text{DEF}_{\text{base}} + \Delta_{\text{def}} - R_{\text{reduction}})$, $\delta_{\text{shield}} = 0.5$ if the defender holds an active shield (otherwise 1.0), and $\text{DEF}_{\text{eff}} = 0$ when the ability carries \texttt{IGNORE\_DEF}.
+
+\textbf{Elemental Reactions.}
+Five reaction pairs modify combat outcomes beyond the base formula:
+\begin{itemize}
+  \item \textit{Fire $+$ Water} $\Rightarrow$ \textbf{Vaporize}: $D \mathrel{\times}= 1.5$
+  \item \textit{Earth $+$ Air} $\Rightarrow$ \textbf{Sandstorm}: grants defender \texttt{dodgeNext = true} (temporary blindness)
+  \item \textit{Water $+$ Earth} $\Rightarrow$ \textbf{Mud}: drains 1 energy from defender, refunds to attacker
+  \item \textit{Fire $+$ Air} $\Rightarrow$ \textbf{Firestorm}: $D \mathrel{+}= 4$ (flat)
+  \item \textit{Light $+$ Dark} $\Rightarrow$ \textbf{Eclipse}: $D = \text{ATK}_{\text{total}}$ (true damage, bypasses all DEF)
+\end{itemize}
+
+\textbf{Defensive Cleansing.}
+Casting a Water or Earth defensive ability tests for active DoT debuffs (\texttt{BURNING}, \texttt{DRENCHED}). A successful cleanse strips the debuff and refunds 1 HP, creating reactive interdependency between status effects and element choice.
+
+\textbf{Turn Lifecycle.}
+
+% FIGURE PLACEHOLDER: Combat Engine Turn Lifecycle
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{combatengine.png}
+    \caption{Combat Engine Turn Lifecycle}
+    \label{fig:architecture}
+\end{figure}
+
+\begin{enumerate}
+  \item Apply start-of-turn status ticks (Poison: $-2$ HP for 3 turns).
+  \item Accrue energy: turns 1--2 generate 2 Energy; turns $\geq 3$ generate 3 Energy; cap at 10.
+  \item Filter and present affordable abilities.
+  \item Execute selected ability; compute elemental reaction if applicable; apply damage.
+  \item Check win condition; advance turn.
+\end{enumerate}
+
+\textbf{Multiplayer Architecture.}
+\texttt{GameSocketManager.java} implements local TCP multiplayer. The host opens a \texttt{ServerSocket} on port 8888; the opponent connects via a direct TCP \texttt{Socket} to the host IP. Send and receive streams (\texttt{PrintWriter}/\texttt{BufferedReader}) run on dedicated \texttt{ExecutorService} threads, pushing resolved game states exclusively through \texttt{Handler(Looper.getMainLooper())} to avoid UI-thread blocking.
+
+\subsection{Data Layer and Persistence}
+All astronomical data is bundled as pre-processed JSON assets within the APK, eliminating runtime network dependency. \texttt{CollectionManager.java} serialises card unlock states to \texttt{SharedPreferences} as JSON, enabling session-persistent progress without a database dependency. Quiz questions are similarly bundled in \texttt{quiz\_questions.json} and loaded into memory at quiz initialisation.
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation}
+\label{sec:implementation}
+
+\subsection{Platform and Language}
+Kepler is implemented in native Android Java (API level 26+), targeting Android 8.0 Oreo and above. Native Java was chosen over cross-platform frameworks (Flutter, React Native) to enable direct \texttt{GLSurfaceView} control for OpenGL ES 2.0 rendering, low-level \texttt{Canvas} drawing in \texttt{JoinDotsView}, and raw \texttt{Sensor} matrix access for gyroscope-to-MVP binding.
+
+\subsection{Coordinate Projection in JoinDotsView}
+The gnomonic projection in \texttt{JoinDotsView} maps each star at equatorial coordinates $(\alpha, \delta)$ to 2D canvas pixels via:
+\begin{align}
+  x &= \tfrac{W}{2} + s \cdot (\alpha - \alpha_0)\cos\delta_0 \\
+  y &= \tfrac{H}{2} - s \cdot (\delta - \delta_0)
+\end{align}
+where $(\alpha_0, \delta_0)$ is the constellation's mean RA/Dec, $s$ is a pixels-per-degree scale factor, and $W \times H$ is the canvas resolution. This linear approximation holds for angular extents $< 30°$, which covers all individual IAU constellation asterisms.
+
+\subsection{Star Brightness Scaling}
+Rendered point size in \texttt{StarRenderer} scales as $r = r_{\max} - k \cdot m$, where $m$ is the star's apparent visual magnitude and $k$ is a device-resolution calibration constant. Stars with $m > 4.5$ are culled from the vertex buffer in Resource-Saving Mode before GPU upload, reducing geometry load without altering the visual hierarchy of bright stars.
+
+\subsection{Topocentric Mapping}
+\texttt{SkyCalculator.java} converts catalogue RA/Dec to local altitude/azimuth using the device's GPS latitude/longitude and system clock, computing the Local Sidereal Time and applying the standard equatorial-to-horizontal rotation. The resulting altitude/azimuth vector drives the MVP matrix orientation each render frame via the gyroscope rotation matrix, binding real celestial positions to physical device orientation.
+
+\subsection{Gesture Validation for Constellation Tracing}
+\texttt{JoinDotsView} captures touch events and snaps the cursor to the nearest \texttt{StarPoint} within 80\,px (Euclidean). A stroke from node $S_i$ to node $S_j$ is committed as a valid edge if and only if $(S_i, S_j)$ appears in the \texttt{targetLines} set and has not yet been drawn. The magnifier (2.5$\times$ clip mask, 250\,px above touch) ensures visibility of connections smaller than a fingertip width. Completion fires \texttt{onConstellationCompleted()}, which calls \texttt{CollectionManager} to escalate the unlock from \texttt{KEY\_PARTIAL} to \texttt{KEY\_CARDS}.
+
+\subsection{Adaptive Quiz Difficulty}
+After each answer, \texttt{DifficultyManager} recomputes \texttt{confidenceScore} per Equations~\ref{eq:speed}--\ref{eq:confidence}. The speed component penalises responses slower than 3\,s, reaching zero at 10\,s. The streak component saturates at five consecutive correct answers. Difficulty transitions are applied immediately for the next question selection, with no smoothing delay, ensuring rapid adaptation to user performance shifts.
+
+\subsection{Combat Damage and Reward Integration}
+The damage formula uses a multiplicative defence model (Section~\ref{sec:architecture}) rather than a subtractive one, preventing defence from ever completely negating damage (minimum 1 is enforced). Cards obtained via \texttt{KEY\_PARTIAL} have ATK and all offensive buff values halved by \texttt{getWeakenedCard()}, making fully traced cards materially stronger in combat and reinforcing the tracing incentive.
+
+\subsection{AI Opponent}
+The greedy AI selects the highest-damage ability affordable within its current energy budget. When HP falls below 30\% of maximum, the fallback logic switches to shield abilities, providing a simple but functional defensive phase. The AI is deterministic and runs on the main thread without computational overhead.
+
+\subsection{Application Flow}
+
+% FIGURE PLACEHOLDER: Activity Navigation Flow
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\linewidth]{activitynav.png}
+    \caption{Activity navigation flow for Kepler}
+    \label{fig:activity_flow}
+\end{figure}
+
+The user enters the immersive 3D sky renderer (\texttt{StarGLSurfaceView}), explores constellations via gyroscope or touch drag, taps a label to trigger a Partial Unlock, launches \texttt{JoinDotsView} to complete the trace for a Full Unlock, accesses the Adaptive Quiz for educational reinforcement, assembles a deck from unlocked cards, and enters either AI or local multiplayer combat.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Future Roadmap}
+\label{sec:roadmap}
+
+The following features are planned extensions to the currently implemented system. They are not present in the codebase and are presented strictly as forward-looking development phases.
+
+\subsection{Phase 1: Expanded Star Catalogue and Rarity System}
+The current implementation covers the 12 zodiac constellations. Phase 1 will incorporate globally recognised non-zodiac constellations—Orion, Ursa Major, Draco, Lyra—as ``Special Cards'' with elevated base statistics. Card rarity will be derived strictly from the mean apparent visual magnitude $\bar{m}$ of each constellation's principal stars:
+
+\begin{equation}
+  \text{Rarity}(c) =
+  \begin{cases}
+    \text{Common} & \bar{m}(c) > 3.0 \\
+    \text{Rare}   & 1.5 < \bar{m}(c) \leq 3.0 \\
+    \text{Mythic} & \bar{m}(c) \leq 1.5
+  \end{cases}
+\end{equation}
+
+This ensures the in-game power hierarchy is anchored to the observable sky. Table~\ref{tab:rarity} shows projected assignments for selected constellations.
+
+\begin{table}[htbp]
+\caption{Projected Rarity Assignments (Selected Constellations)}
+\label{tab:rarity}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}llcc@{}}
+\toprule
+\textbf{Constellation} & \textbf{Type} & $\bar{m}$ & \textbf{Rarity} \\
+\midrule
+Orion        & Non-Zodiac & $\approx 1.2$ & Mythic  \\
+Lyra         & Non-Zodiac & $\approx 1.3$ & Mythic  \\
+Scorpius     & Zodiac     & $\approx 1.6$ & Rare    \\
+Leo          & Zodiac     & $\approx 2.0$ & Rare    \\
+Cancer       & Zodiac     & $\approx 3.7$ & Common  \\
+Pisces       & Zodiac     & $\approx 4.0$ & Common  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Phase 2: Multi-Deck Combat}
+Phase 2 transitions the battle system from single-card duels to a ``Deck of 5'' format. A \texttt{DeckSelectionActivity} will expose a deck-builder interface for curating five-card loadouts based on elemental synergies. Non-combatant \textit{Passive Cards} representing deep-sky objects (e.g., Orion Nebula, Andromeda Galaxy) will occupy passive slots, providing global buffs such as ``$+1$ Energy per turn'' or ``All Zodiac cards $+2$ DEF,'' substantially increasing strategic depth.
+
+\subsection{Phase 3: Visual and Audio Polish}
+Phase 3 will add element-specific particle systems (fire sparks, water ripples, earth shockwaves, air gusts) and distinct combat animations: card shake on critical hit, transparency fade on Dodge, and persistent HUD icons for active Poison and Shield. An adaptive audio system will shift elemental soundscapes in response to the active element balance on the battlefield.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Novelty of Technical Implementations}
+
+Six major technical contributions distinguish Kepler from comparable Android applications:
+
+\begin{itemize}
+
+\item \textbf{Topocentric Rotational Matrix Integration}  
+Gyroscope sensor matrices are mapped natively in Java using OpenGL ES from device space into the celestial coordinate frame (RA/Dec $\rightarrow$ altitude/azimuth), without relying on any third-party 3D engine. This enables accurate real-time sky tracking directly through native Android sensor handling.
+
+\item \textbf{Procedural Harmonic Horizon Generation}  
+The horizon and ground mesh are generated dynamically at load time using a trigonometric composite over the azimuth angle. This avoids the need for heavy prebuilt 3D terrain assets and achieves near-zero memory overhead while maintaining a natural-looking environmental horizon.
+
+\item \textbf{Real-Time AABB Font Collision via Canvas Overlay}  
+Star labels and constellation names are anti-cluttered at 60 FPS using magnitude-priority sorting combined with \texttt{RectF.intersects()} axis-aligned bounding box rejection. This creates clean label rendering without requiring external text-rendering libraries.
+
+\item \textbf{Geometric Tracing as a State-Gated Unlock}  
+The \texttt{JoinDotsView} system uses touch-validated constellation tracing as a progression gate. Players must correctly trace real star patterns before unlocking constellation cards, directly linking spatial astronomy learning to persistent gameplay progression.
+
+\item \textbf{Telemetry-Based No-ML Adaptive Difficulty}  
+The \texttt{DifficultyManager} adjusts quiz difficulty entirely through lightweight local heuristics using player accuracy, answer speed, and streak tracking. This creates personalised difficulty scaling without server-side processing, heavy machine learning models, or network dependency.
+
+\item \textbf{Reactive Elemental Cleansing}  
+Defensive ability casts actively test for and remove ongoing damage-over-time effects such as poison while optionally refunding HP. This creates deeper combat interactions and cross-effect dependencies beyond simple static defence or armour systems.
+
+\end{itemize}
+
+\subsection{Scientific Integrity as a Design Constraint}
+A central thesis of Kepler is that real astronomical data can act as a principled design constraint rather than a superficial aesthetic layer. By grounding card acquisition in genuine star-tracing tasks and deriving rarity from measured stellar magnitude, the game resists the arbitrary power inflation endemic to many CCGs. This approach aligns with Malone's intrinsic motivation framework \cite{malone1981toward}, wherein challenge and fantasy are most motivating when they are meaningfully coupled.
+
+\subsection{Educational Efficacy}
+Like much work in serious games, the present system is designed around a pedagogical hypothesis that should be validated through controlled evaluation. Future work will include a user study measuring players' ability to identify and name zodiac constellations before and after extended play sessions, benchmarked against a control group using a passive stargazing application.
+
+\subsection{Scalability of the HYG Catalogue}
+The HYG catalogue contains approximately 119,000 stars \cite{hyg}. The current implementation bundles a trimmed subset covering only the 88 IAU-recognised constellation asterisms. Scaling to the full catalogue would require either a streaming data architecture or more aggressive client-side indexing to maintain acceptable cold-start performance on mid-range Android devices.
+
+\subsection{AI Limitations}
+The greedy heuristic AI provides an adequate baseline but lacks the adaptive capability to respond to player strategy. Incorporating MCTS \cite{cowling2012information} or a lightweight reinforcement learning agent, trained on self-play, would substantially improve the quality and perceived intelligence of AI opponents.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented \textit{Kepler}, a mobile application that unifies real-world astronomical data with strategic card battle gameplay. By requiring players to trace accurate constellation star patterns sourced from the HYG catalogue before unlocking combat cards, Kepler creates a bidirectional coupling between astronomical education and game progression. The system's architecture, comprising an astronomy rendering subsystem, an OpenGL starfield renderer, and a state-driven game engine, demonstrates that scientifically grounded data can serve as a robust, non-arbitrary foundation for game balance and card design. The proposed roadmap, encompassing a magnitude-based rarity system, multi-deck strategic combat, and elemental visual effects, charts a path toward a feature-complete educational card game that remains anchored in observable celestial reality.
+
+Kepler contributes a replicable model for the design of educational games in which subject-matter interaction is embedded directly into the core acquisition loop, rather than relegated to optional tutorial content. We believe this design principle generalises beyond astronomy: any domain with rich structured data---geology, biology, cartography---could serve as a similarly principled substrate for gamification.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section*{Acknowledgment}
+The authors thank the maintainers of the HYG stellar catalogue for making high-quality astronomical data freely available for non-commercial and educational use.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{thebibliography}{00}
+
+\bibitem{stellarium}
+Noctua Software Ltd, ``Stellarium Mobile -- Star Map,'' [Online]. Available: \url{https://apps.apple.com/app/stellarium-mobile-star-map/id720634354}. [Accessed: 2024].
+
+\bibitem{starwalk2}
+Vito Technology Inc., ``Star Walk 2 Plus -- Night Sky Map,'' [Online]. Available: \url{https://play.google.com/store/apps/details?id=com.vitotechnology.StarWalk2Free}. [Accessed: 2024].
+
+\bibitem{skyacademy}
+Sky Academy, ``Sky Academy: Learn Astronomy,'' [Online]. Available: \url{https://play.google.com/store/apps/details?id=com.skyacademy}. [Accessed: 2024].
+
+\bibitem{lcd_constellations}
+N. Featherstone, ``Constellation Identification Lab,'' Laboratory for Computational Dynamics, University of Colorado, [Online]. Available: \url{http://lcd-www.colorado.edu/feathern/1030/constellations.pdf}. [Accessed: 2024].
+
+\bibitem{astromania}
+C. Corrigan, ``Astromania: The Astronomy Card Game,'' \textit{The Game Crafter}, [Online]. Available: \url{https://www.thegamecrafter.com/games/astromania-the-astronomy-card-game}. [Accessed: 2024].
+
+\bibitem{tracestars}
+``Trace the Stars,'' \textit{The Game Crafter}, [Online]. Available: \url{https://www.thegamecrafter.com/games/trace-the-stars}. [Accessed: 2024].
+
+\bibitem{stellar_card}
+``Stellar -- 2-Player Astronomy Card Game,'' [Online]. Available via Facebook Games Community. [Accessed: 2024].
+
+\bibitem{stormbound}
+Kongregate, ``Stormbound: PVP Card Battle,'' [Online]. Available: \url{https://play.google.com/store/apps/details?id=com.kongregate.mobile.stormbound.google}. [Accessed: 2024].
+
+\bibitem{serious_games_review}
+P. Connolly \textit{et al.}, ``Serious games: An updated systematic literature review,'' \textit{arXiv preprint arXiv:2410.XXXX}, 2024. [Online]. Available: \url{https://arxiv.org}.
+
+\bibitem{mccauley2025}
+V. McCauley \textit{et al.}, ``Game-based learning in astronomy,'' \textit{ScienceDirect}, 2025.
+
+\bibitem{starfarer_thesis}
+``In-game motivation: Teaching astronomy through game-based and narrative learning,'' DiVA Portal, Link\"{o}ping University, 2023. [Online]. Available: \url{https://www.diva-portal.org}.
+
+\bibitem{prensky2001digital}
+M. Prensky, \textit{Digital Game-Based Learning}. New York, NY, USA: McGraw-Hill, 2001.
+
+\bibitem{schaller2012mobile}
+D. Schaller, ``Mobile learning: The next step in educational technology,'' \textit{J. Museum Educ.}, vol. 37, no. 2, pp. 13--21, 2012.
+
+\bibitem{hearthstone}
+Blizzard Entertainment, ``Hearthstone,'' [Online]. Available: \url{https://hearthstone.blizzard.com}. [Accessed: 2024].
+
+\bibitem{slayspire}
+MegaCrit, ``Slay the Spire,'' [Online]. Available: \url{https://www.megacrit.com}. [Accessed: 2024].
+
+\bibitem{deterding2011game}
+S. Deterding, D. Dixon, R. Khaled, and L. Nacke, ``From game design elements to gamefulness: Defining gamification,'' in \textit{Proc. 15th Int. Acad. MindTrek Conf.}, Tampere, Finland, 2011, pp. 9--15.
+
+\bibitem{hamari2014does}
+J. Hamari, J. Koivisto, and H. Sarsa, ``Does gamification work? -- A literature review of empirical studies on gamification,'' in \textit{Proc. 47th Hawaii Int. Conf. Syst. Sci.}, Waikoloa, HI, USA, 2014, pp. 3025--3034.
+
+\bibitem{lintott2008galaxy}
+C. J. Lintott \textit{et al.}, ``Galaxy Zoo: Morphologies derived from visual inspection of galaxies from the Sloan Digital Sky Survey,'' \textit{Mon. Not. R. Astron. Soc.}, vol. 389, no. 3, pp. 1179--1189, 2008.
+
+\bibitem{cowling2012information}
+P. I. Cowling, E. J. Powley, and D. Whitehouse, ``Information set Monte Carlo tree search,'' \textit{IEEE Trans. Comput. Intell. AI Games}, vol. 4, no. 2, pp. 120--143, Jun. 2012.
+
+\bibitem{pioneer2016pokemongo}
+E. Colley, ``The Pok\'{e}mon GO phenomenon: augmented reality as a platform for location-based engagement,'' \textit{First Monday}, vol. 22, no. 4, 2017.
+
+\bibitem{hyg}
+D. Nash, ``HYG Star Database,'' [Online]. Available: \url{https://github.com/astronexus/HYG-Database}. [Accessed: 2024].
+
+\bibitem{malone1981toward}
+T. W. Malone, ``Toward a theory of intrinsically motivating instruction,'' \textit{Cogn. Sci.}, vol. 5, no. 4, pp. 333--369, 1981.
+
+\end{thebibliography}
+
+\end{document}

@@ -69,7 +69,13 @@ public class GameEngine {
         }
         
         if (!isUserTurn && !isMultiplayer) {
-            performAiTurn();
+            listener.onLog("AI is thinking...");
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    performAiTurn();
+                }
+            }, 2000);
         }
         listener.onUpdate();
     }
@@ -230,29 +236,136 @@ public class GameEngine {
         return false;
     }
 
+    public void initSinglePlayerMatch(List<Card> userDeck, int difficultyLevel) {
+        this.isMultiplayer = false;
+        this.user.deck = new ArrayList<>(userDeck);
+        if (!this.user.deck.isEmpty()) {
+            this.user.activeCard = this.user.deck.get(0);
+        }
+        
+        List<Card> library = getLibrary();
+        this.ai.deck = new ArrayList<>();
+        Random rng = new Random();
+        
+        // Build a random 3-card deck for AI from library
+        while(this.ai.deck.size() < 3 && !library.isEmpty()) {
+            int idx = rng.nextInt(library.size());
+            Card c = library.get(idx);
+            if (!this.ai.deck.contains(c)) {
+                this.ai.deck.add(c);
+            }
+        }
+        if (!this.ai.deck.isEmpty()) {
+            this.ai.activeCard = this.ai.deck.get(0);
+        }
+        
+        // Easy = normal start, Hard = AI starts with 2 extra energy advantages
+        this.ai.energy = (difficultyLevel >= 2) ? 2 : 0; 
+
+        this.turnCount = 1;
+        this.isUserTurn = true;
+        this.startTurn();
+    }
+
     private void performAiTurn() {
-        Ability chosen = null;
-        if (ai.hp < 15) {
-            for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy) {
-                    chosen = a;
-                    break;
+        // 1. Evaluate Swap Condition
+        if (ai.energy >= 1 && ai.activeCard != null && ai.deck.size() > 1) {
+            boolean hasAffordableAttack = false;
+            for(Ability a : ai.activeCard.attackAbilities) if(a.energyCost <= ai.energy && a.currentCooldown == 0) hasAffordableAttack = true;
+            for(Ability a : ai.activeCard.defenseAbilities) if(a.energyCost <= ai.energy && a.currentCooldown == 0 && ai.hp < 15) hasAffordableAttack = true;
+
+            if (!hasAffordableAttack) {
+                // No good moves but we have energy. Swap to a card with affordable moves.
+                for (Card c : ai.deck) {
+                    if (c != ai.activeCard) {
+                        for(Ability a : c.attackAbilities) {
+                           if(a.energyCost <= (ai.energy - 1) && a.currentCooldown == 0) {
+                               swapCard(c.name);
+                               break; // Swapped successfully
+                           }
+                        }
+                    }
+                    if (ai.activeCard == c) break;
                 }
             }
         }
 
+        Ability chosen = null;
+        
+        // 2. Smart Defense & Cleansing Check
+        if (ai.elementalStatus == ElementalStatus.BURNING) {
+            for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.EARTH)) {
+                    chosen = a; break;
+                }
+            }
+        } else if (ai.elementalStatus == ElementalStatus.DRENCHED) {
+             for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.FIRE || a.element == Ability.Element.EARTH)) {
+                    chosen = a; break;
+                }
+            }
+        } else if (ai.elementalStatus == ElementalStatus.DUST) {
+             for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.AIR)) {
+                    chosen = a; break;
+                }
+            }
+        } else if (ai.elementalStatus == ElementalStatus.GUST) {
+             for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && a.element == Ability.Element.EARTH) {
+                    chosen = a; break;
+                }
+            }
+        }
+
+        // Basic panic defense if heavily damaged
+        if (chosen == null && ai.hp < 15) {
+            for (Ability a : ai.activeCard.defenseAbilities) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0) {
+                    chosen = a;
+                    // Prefer shield or heal
+                    if(a.effect == Ability.Effect.SHIELD || a.effect == Ability.Effect.HEAL) break;
+                }
+            }
+        }
+
+        // 3. Elemental Attack Combos
         if (chosen == null) {
             for (Ability a : ai.activeCard.attackAbilities) {
-                if (a.energyCost <= ai.energy) {
+                if (a.energyCost <= ai.energy && a.currentCooldown == 0) {
+                    boolean isCombo = false;
+                    if (a.element == Ability.Element.FIRE && user.elementalStatus == ElementalStatus.DRENCHED) isCombo = true;
+                    if (a.element == Ability.Element.WATER && user.elementalStatus == ElementalStatus.BURNING) isCombo = true;
+                    if (a.element == Ability.Element.AIR && user.elementalStatus == ElementalStatus.DUST) isCombo = true;
+                    if (a.element == Ability.Element.EARTH && user.elementalStatus == ElementalStatus.GUST) isCombo = true;
+                    if (a.element == Ability.Element.LIGHT && user.elementalStatus == ElementalStatus.DARK) isCombo = true;
+                    if (a.element == Ability.Element.DARK && user.elementalStatus == ElementalStatus.LIGHT) isCombo = true;
+
+                    if (isCombo) {
+                        chosen = a; break; // Guarantee taking the combo strike
+                    }
                     if (chosen == null || a.value > chosen.value) chosen = a;
                 }
+            }
+        }
+
+        // 4. Energy Conservation
+        // Skip weak attacks to save up for a nuke if healthy
+        if (chosen != null && chosen.type == Ability.Type.ATTACK && chosen.value <= 4 && ai.energy < 4) {
+            boolean haveBetterExpensive = false;
+            for (Ability a : ai.activeCard.attackAbilities) {
+                if (a.energyCost > ai.energy && a.value >= 6) haveBetterExpensive = true;
+            }
+            if (haveBetterExpensive && ai.hp > 10) {
+                chosen = null; 
             }
         }
 
         if (chosen != null) {
             playAbility(chosen);
         } else {
-            endTurn(); // End turn if no move possible
+            endTurn(); // End turn to stockpile energy
         }
     }
 

@@ -232,10 +232,10 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         
         // Setup AI deck
         if (!isMultiplayer) {
-            engine.ai.deck.add(library.get(new Random().nextInt(library.size())));
-            engine.ai.deck.add(library.get(new Random().nextInt(library.size())));
-            engine.ai.activeCard = engine.ai.deck.get(0);
-            engine.startTurn();
+            engine.initSinglePlayerMatch(engine.user.deck, 2); // Pass deck and difficulty 2
+            gameStarted = true; // Fix: Set UI state to started so user can press buttons
+            onLog("You go first!");
+            onUpdate(); // Force UI refresh so buttons unlock
         } else {
             // Assign a placeholder card until the opponent syncs their deck
             engine.ai.activeCard = library.get(0);

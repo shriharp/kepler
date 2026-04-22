@@ -55,6 +55,7 @@ public class MultiplayerSetupActivity extends AppCompatActivity implements WifiP
         rvDevices = findViewById(R.id.rv_devices);
         Button btnHost = findViewById(R.id.btn_host_game);
         Button btnJoin = findViewById(R.id.btn_join_game);
+        Button btnSingle = findViewById(R.id.btn_single_player);
 
         rvDevices.setLayoutManager(new LinearLayoutManager(this));
         adapter = new DeviceAdapter(peers, this::connectToPeer);
@@ -72,6 +73,13 @@ public class MultiplayerSetupActivity extends AppCompatActivity implements WifiP
 
         btnHost.setOnClickListener(v -> handleAction(true));
         btnJoin.setOnClickListener(v -> handleAction(false));
+        
+        btnSingle.setOnClickListener(v -> {
+            Intent intent = new Intent(MultiplayerSetupActivity.this, DeckSelectionActivity.class);
+            intent.putExtra("is_multiplayer", false);
+            startActivity(intent);
+            finish();
+        });
         
         socketManager = GameSocketManager.getInstance();
         socketManager.close(); // Clean up any lingering sockets from previous games
