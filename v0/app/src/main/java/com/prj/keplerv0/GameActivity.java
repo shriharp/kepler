@@ -18,9 +18,9 @@ import java.util.Random;
 public class GameActivity extends AppCompatActivity implements GameEngine.GameUpdateListener {
 
     private GameEngine engine;
-    private TextView tvUserHp, tvUserEnergy, tvAiHp, tvAiEnergy, tvAiCard, tvCardName, tvCardStats, tvTurnIndicator;
+    private TextView tvUserHp, tvUserStamina, tvAiHp, tvAiStamina, tvAiCard, tvCardName, tvCardStats, tvTurnIndicator;
     private TextView tvEffectAnim;
-    private ProgressBar pbUserHp, pbUserEnergy, pbAiHp, pbAiEnergy;
+    private ProgressBar pbUserHp, pbUserStamina, pbAiHp, pbAiStamina;
     private Button btnAtk1, btnAtk2, btnDef1, btnDef2, btnEndTurn, btnSwapCard;
     
     private boolean isMultiplayer = false;
@@ -93,9 +93,9 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 engine.endTurn();
             } else if (parts[0].equals("SYNC")) {
                 engine.ai.hp = Integer.parseInt(parts[1]);
-                engine.ai.energy = Integer.parseInt(parts[2]);
+                engine.ai.stamina = Integer.parseInt(parts[2]);
                 engine.user.hp = Integer.parseInt(parts[3]);
-                engine.user.energy = Integer.parseInt(parts[4]);
+                engine.user.stamina = Integer.parseInt(parts[4]);
                 if (parts.length > 5) {
                     engine.ai.elementalStatus = GameEngine.ElementalStatus.valueOf(parts[5]);
                     engine.user.elementalStatus = GameEngine.ElementalStatus.valueOf(parts[6]);
@@ -159,18 +159,18 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
 
     private void initUi() {
         tvUserHp = findViewById(R.id.tv_user_hp);
-        tvUserEnergy = findViewById(R.id.tv_user_energy);
+        tvUserStamina = findViewById(R.id.tv_user_stamina);
         tvAiHp = findViewById(R.id.tv_ai_hp);
-        tvAiEnergy = findViewById(R.id.tv_ai_energy);
+        tvAiStamina = findViewById(R.id.tv_ai_stamina);
         tvAiCard = findViewById(R.id.tv_ai_card);
         tvCardName = findViewById(R.id.tv_card_name);
         tvCardStats = findViewById(R.id.tv_card_stats);
         tvTurnIndicator = findViewById(R.id.tv_turn_indicator);
         tvEffectAnim = findViewById(R.id.tv_effect_anim);
         pbUserHp = findViewById(R.id.pb_user_hp);
-        pbUserEnergy = findViewById(R.id.pb_user_energy);
+        pbUserStamina = findViewById(R.id.pb_user_stamina);
         pbAiHp = findViewById(R.id.pb_ai_hp);
-        pbAiEnergy = findViewById(R.id.pb_ai_energy);
+        pbAiStamina = findViewById(R.id.pb_ai_stamina);
         btnAtk1 = findViewById(R.id.btn_atk1);
         btnAtk2 = findViewById(R.id.btn_atk2);
         btnDef1 = findViewById(R.id.btn_def1);
@@ -182,7 +182,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
             engine.endTurn();
             if (isMultiplayer) {
                 socketManager.sendMessage("END_TURN");
-                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
+                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.stamina + ":" + engine.ai.hp + ":" + engine.ai.stamina + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
             }
         });
 
@@ -199,7 +199,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
                 updateAbilityButtons();
                 if (isMultiplayer) {
                     socketManager.sendMessage("SWAP:" + otherCard);
-                    socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
+                    socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.stamina + ":" + engine.ai.hp + ":" + engine.ai.stamina + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
                 }
             }
         });
@@ -260,7 +260,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
     private void setupAbilityButton(Button btn, Ability ability, int index, boolean isAttack) {
         String elementStr = ability.element != Ability.Element.NEUTRAL ? ability.element.name() : "N/A";
         String cdStr = ability.currentCooldown > 0 ? "\n(CD: " + ability.currentCooldown + ")" : "";
-        btn.setText(ability.name + "\n(" + elementStr + ")\nCost: " + ability.energyCost + "E" + cdStr);
+        btn.setText(ability.name + "\n(" + elementStr + ")\nCost: " + ability.staminaCost + "S" + cdStr);
         
         // Color coding
         if (isAttack) {
@@ -277,7 +277,7 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
             engine.playAbility(ability);
             updateAbilityButtons();
             if (isMultiplayer) {
-                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.energy + ":" + engine.ai.hp + ":" + engine.ai.energy + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
+                socketManager.sendMessage("SYNC:" + engine.user.hp + ":" + engine.user.stamina + ":" + engine.ai.hp + ":" + engine.ai.stamina + ":" + engine.user.elementalStatus.name() + ":" + engine.ai.elementalStatus.name());
             }
         });
     }
@@ -287,14 +287,14 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         tvUserHp.setText(engine.user.hp + "/20");
         pbUserHp.setProgress(engine.user.hp);
         
-        tvUserEnergy.setText(engine.user.energy + "/10");
-        pbUserEnergy.setProgress(engine.user.energy);
+        tvUserStamina.setText(engine.user.stamina + "/10");
+        pbUserStamina.setProgress(engine.user.stamina);
         
         tvAiHp.setText(engine.ai.hp + "/20");
         pbAiHp.setProgress(engine.ai.hp);
         
-        tvAiEnergy.setText(engine.ai.energy + "/10");
-        pbAiEnergy.setProgress(engine.ai.energy);
+        tvAiStamina.setText(engine.ai.stamina + "/10");
+        pbAiStamina.setProgress(engine.ai.stamina);
 
         tvCardName.setText(engine.user.activeCard.name);
         tvCardStats.setText("ATK: " + engine.user.activeCard.attack + " | DEF: " + engine.user.activeCard.defense + "\nStatus: " + engine.user.elementalStatus.name());
@@ -316,14 +316,14 @@ public class GameActivity extends AppCompatActivity implements GameEngine.GameUp
         tvTurnIndicator.setTextColor(isMyTurn ? 0xFF00FF00 : 0xFFFF0000);
         btnEndTurn.setVisibility(isMyTurn ? View.VISIBLE : View.GONE);
         btnSwapCard.setVisibility(engine.user.deck.size() > 1 ? View.VISIBLE : View.GONE);
-        btnSwapCard.setEnabled(isMyTurn && engine.user.energy >= 1);
+        btnSwapCard.setEnabled(isMyTurn && engine.user.stamina >= 1);
         
         updateAbilityButtons(); // Refresh CD texts
 
-        btnAtk1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(0).energyCost && engine.user.activeCard.attackAbilities.get(0).currentCooldown == 0);
-        btnAtk2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.attackAbilities.get(1).energyCost && engine.user.activeCard.attackAbilities.get(1).currentCooldown == 0);
-        btnDef1.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(0).energyCost && engine.user.activeCard.defenseAbilities.get(0).currentCooldown == 0);
-        btnDef2.setEnabled(isMyTurn && engine.user.energy >= engine.user.activeCard.defenseAbilities.get(1).energyCost && engine.user.activeCard.defenseAbilities.get(1).currentCooldown == 0);
+        btnAtk1.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.attackAbilities.get(0).staminaCost && engine.user.activeCard.attackAbilities.get(0).currentCooldown == 0);
+        btnAtk2.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.attackAbilities.get(1).staminaCost && engine.user.activeCard.attackAbilities.get(1).currentCooldown == 0);
+        btnDef1.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.defenseAbilities.get(0).staminaCost && engine.user.activeCard.defenseAbilities.get(0).currentCooldown == 0);
+        btnDef2.setEnabled(isMyTurn && engine.user.stamina >= engine.user.activeCard.defenseAbilities.get(1).staminaCost && engine.user.activeCard.defenseAbilities.get(1).currentCooldown == 0);
     }
 
     @Override

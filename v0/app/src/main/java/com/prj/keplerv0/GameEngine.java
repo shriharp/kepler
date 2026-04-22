@@ -9,7 +9,7 @@ public class GameEngine {
 
     public static class Player {
         public int hp = 20;
-        public int energy = 0; // Starts at 0, updated by mana curve
+        public int stamina = 0; // Starts at 0, updated by mana curve
         public Card activeCard;
         public List<Card> deck = new ArrayList<>();
         public int poisonTurns = 0;
@@ -42,9 +42,9 @@ public class GameEngine {
     public void startTurn() {
         Player p = isUserTurn ? user : ai;
         
-        // Mana Curve: Gain +2 energy for first 2 turns, then +3 afterwards
+        // Mana Curve: Gain +2 stamina for first 2 turns, then +3 afterwards
         int energyGain = (turnCount <= 2) ? 2 : 3;
-        p.energy = Math.min(p.energy + energyGain, 10);
+        p.stamina = Math.min(p.stamina + energyGain, 10);
         
         // Cooldown decrements
         for(Card c : p.deck) {
@@ -84,8 +84,8 @@ public class GameEngine {
         Player attacker = isUserTurn ? user : ai;
         Player defender = isUserTurn ? ai : user;
 
-        if (attacker.energy < ability.energyCost) {
-            listener.onLog("Not enough energy!");
+        if (attacker.stamina < ability.staminaCost) {
+            listener.onLog("Not enough stamina!");
             return;
         }
         if (ability.currentCooldown > 0) {
@@ -93,7 +93,7 @@ public class GameEngine {
             return;
         }
 
-        attacker.energy -= ability.energyCost;
+        attacker.stamina -= ability.staminaCost;
         ability.currentCooldown = ability.baseCooldown;
         listener.onLog((isUserTurn ? "User" : (isMultiplayer ? "Opponent" : "AI")) + " used " + ability.name);
 
@@ -135,13 +135,13 @@ public class GameEngine {
                     defender.elementalStatus = ElementalStatus.NONE;
                     listener.onLog("SANDSTORM! Target blinded!");
                 } else if (ability.element == Ability.Element.EARTH && defender.elementalStatus == ElementalStatus.DRENCHED) {
-                    attacker.energy = Math.min(10, attacker.energy + 1); // Cost +1 to them indirectly by refunding us
+                    attacker.stamina = Math.min(10, attacker.stamina + 1); // Cost +1 to them indirectly by refunding us
                     defender.elementalStatus = ElementalStatus.NONE;
-                    listener.onLog("MUD! Energy drained!");
+                    listener.onLog("MUD! Stamina drained!");
                 } else if (ability.element == Ability.Element.WATER && defender.elementalStatus == ElementalStatus.DUST) {
-                    attacker.energy = Math.min(10, attacker.energy + 1);
+                    attacker.stamina = Math.min(10, attacker.stamina + 1);
                     defender.elementalStatus = ElementalStatus.NONE;
-                    listener.onLog("MUD! Energy drained!");
+                    listener.onLog("MUD! Stamina drained!");
                 } else if (ability.element == Ability.Element.AIR && defender.elementalStatus == ElementalStatus.BURNING) {
                     damage += 4;
                     listener.onLog("FIRESTORM! Massive Burst!");
@@ -215,13 +215,13 @@ public class GameEngine {
 
     public boolean swapCard(String cardName) {
         Player p = isUserTurn ? user : ai;
-        if (p.energy < 1) {
-            listener.onLog("Not enough energy to swap!");
+        if (p.stamina < 1) {
+            listener.onLog("Not enough stamina to swap!");
             return false;
         }
         for (Card c : p.deck) {
             if (c.name.equals(cardName) && !c.name.equals(p.activeCard.name)) {
-                p.energy -= 1;
+                p.stamina -= 1;
                 p.activeCard = c;
                 // Reset temporary buffs when swapping
                 p.nextAttackBonus = 0; 
@@ -259,8 +259,8 @@ public class GameEngine {
             this.ai.activeCard = this.ai.deck.get(0);
         }
         
-        // Easy = normal start, Hard = AI starts with 2 extra energy advantages
-        this.ai.energy = (difficultyLevel >= 2) ? 2 : 0; 
+        // Easy = normal start, Hard = AI starts with 2 extra stamina advantages
+        this.ai.stamina = (difficultyLevel >= 2) ? 2 : 0; 
 
         this.turnCount = 1;
         this.isUserTurn = true;
@@ -269,17 +269,17 @@ public class GameEngine {
 
     private void performAiTurn() {
         // 1. Evaluate Swap Condition
-        if (ai.energy >= 1 && ai.activeCard != null && ai.deck.size() > 1) {
+        if (ai.stamina >= 1 && ai.activeCard != null && ai.deck.size() > 1) {
             boolean hasAffordableAttack = false;
-            for(Ability a : ai.activeCard.attackAbilities) if(a.energyCost <= ai.energy && a.currentCooldown == 0) hasAffordableAttack = true;
-            for(Ability a : ai.activeCard.defenseAbilities) if(a.energyCost <= ai.energy && a.currentCooldown == 0 && ai.hp < 15) hasAffordableAttack = true;
+            for(Ability a : ai.activeCard.attackAbilities) if(a.staminaCost <= ai.stamina && a.currentCooldown == 0) hasAffordableAttack = true;
+            for(Ability a : ai.activeCard.defenseAbilities) if(a.staminaCost <= ai.stamina && a.currentCooldown == 0 && ai.hp < 15) hasAffordableAttack = true;
 
             if (!hasAffordableAttack) {
-                // No good moves but we have energy. Swap to a card with affordable moves.
+                // No good moves but we have stamina. Swap to a card with affordable moves.
                 for (Card c : ai.deck) {
                     if (c != ai.activeCard) {
                         for(Ability a : c.attackAbilities) {
-                           if(a.energyCost <= (ai.energy - 1) && a.currentCooldown == 0) {
+                           if(a.staminaCost <= (ai.stamina - 1) && a.currentCooldown == 0) {
                                swapCard(c.name);
                                break; // Swapped successfully
                            }
@@ -295,25 +295,25 @@ public class GameEngine {
         // 2. Smart Defense & Cleansing Check
         if (ai.elementalStatus == ElementalStatus.BURNING) {
             for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.EARTH)) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.EARTH)) {
                     chosen = a; break;
                 }
             }
         } else if (ai.elementalStatus == ElementalStatus.DRENCHED) {
              for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.FIRE || a.element == Ability.Element.EARTH)) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0 && (a.element == Ability.Element.FIRE || a.element == Ability.Element.EARTH)) {
                     chosen = a; break;
                 }
             }
         } else if (ai.elementalStatus == ElementalStatus.DUST) {
              for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.AIR)) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0 && (a.element == Ability.Element.WATER || a.element == Ability.Element.AIR)) {
                     chosen = a; break;
                 }
             }
         } else if (ai.elementalStatus == ElementalStatus.GUST) {
              for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0 && a.element == Ability.Element.EARTH) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0 && a.element == Ability.Element.EARTH) {
                     chosen = a; break;
                 }
             }
@@ -322,7 +322,7 @@ public class GameEngine {
         // Basic panic defense if heavily damaged
         if (chosen == null && ai.hp < 15) {
             for (Ability a : ai.activeCard.defenseAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0) {
                     chosen = a;
                     // Prefer shield or heal
                     if(a.effect == Ability.Effect.SHIELD || a.effect == Ability.Effect.HEAL) break;
@@ -333,7 +333,7 @@ public class GameEngine {
         // 3. Elemental Attack Combos
         if (chosen == null) {
             for (Ability a : ai.activeCard.attackAbilities) {
-                if (a.energyCost <= ai.energy && a.currentCooldown == 0) {
+                if (a.staminaCost <= ai.stamina && a.currentCooldown == 0) {
                     boolean isCombo = false;
                     if (a.element == Ability.Element.FIRE && user.elementalStatus == ElementalStatus.DRENCHED) isCombo = true;
                     if (a.element == Ability.Element.WATER && user.elementalStatus == ElementalStatus.BURNING) isCombo = true;
@@ -350,12 +350,12 @@ public class GameEngine {
             }
         }
 
-        // 4. Energy Conservation
+        // 4. Stamina Conservation
         // Skip weak attacks to save up for a nuke if healthy
-        if (chosen != null && chosen.type == Ability.Type.ATTACK && chosen.value <= 4 && ai.energy < 4) {
+        if (chosen != null && chosen.type == Ability.Type.ATTACK && chosen.value <= 4 && ai.stamina < 4) {
             boolean haveBetterExpensive = false;
             for (Ability a : ai.activeCard.attackAbilities) {
-                if (a.energyCost > ai.energy && a.value >= 6) haveBetterExpensive = true;
+                if (a.staminaCost > ai.stamina && a.value >= 6) haveBetterExpensive = true;
             }
             if (haveBetterExpensive && ai.hp > 10) {
                 chosen = null; 
@@ -365,19 +365,19 @@ public class GameEngine {
         if (chosen != null) {
             playAbility(chosen);
         } else {
-            endTurn(); // End turn to stockpile energy
+            endTurn(); // End turn to stockpile stamina
         }
     }
 
     public static Card getWeakenedCard(String name) {
         for (Card c : getLibrary()) {
             if (c.name.equals(name)) {
-                Card weak = new Card("★½ " + c.name, c.attack / 2, c.defense / 2, c.energyCost);
+                Card weak = new Card("★½ " + c.name, c.attack / 2, c.defense / 2, c.staminaCost);
                 for (Ability a : c.attackAbilities) {
-                    weak.addAbility(new Ability(a.name, a.type, a.element, a.value / 2, a.energyCost, a.effect, a.baseCooldown));
+                    weak.addAbility(new Ability(a.name, a.type, a.element, a.value / 2, a.staminaCost, a.effect, a.baseCooldown));
                 }
                 for (Ability a : c.defenseAbilities) {
-                    weak.addAbility(new Ability(a.name, a.type, a.element, a.value / 2, a.energyCost, a.effect, a.baseCooldown));
+                    weak.addAbility(new Ability(a.name, a.type, a.element, a.value / 2, a.staminaCost, a.effect, a.baseCooldown));
                 }
                 return weak;
             }
@@ -460,7 +460,7 @@ public class GameEngine {
 
         Card aquarius = new Card("Aquarius", 6, 8, 0);
         aquarius.addAbility(new Ability("Flow Surge", Ability.Type.ATTACK, Ability.Element.WATER, 5, 2, Ability.Effect.NONE, 0));
-        aquarius.addAbility(new Ability("Energy Drain", Ability.Type.ATTACK, Ability.Element.DARK, 2, 3, Ability.Effect.NONE, 0));
+        aquarius.addAbility(new Ability("Stamina Drain", Ability.Type.ATTACK, Ability.Element.DARK, 2, 3, Ability.Effect.NONE, 0));
         aquarius.addAbility(new Ability("Healing Rain", Ability.Type.DEFENSE, Ability.Element.WATER, 4, 2, Ability.Effect.HEAL, 2));
         aquarius.addAbility(new Ability("Barrier Flow", Ability.Type.DEFENSE, Ability.Element.WATER, 5, 2, Ability.Effect.NONE, 0));
         lib.add(aquarius);

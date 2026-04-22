@@ -125,13 +125,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="OPPONENT ENERGY"
+                android:text="OPPONENT STAMINA"
                 android:textColor="@color/text_secondary"
                 android:textSize="10sp"
                 android:letterSpacing="0.1" />
 
             <ProgressBar
-                android:id="@+id/pb_ai_energy"
+                android:id="@+id/pb_ai_stamina"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="8dp"
@@ -141,7 +141,7 @@
                 android:progressTint="@color/accent_blue" />
                 
             <TextView
-                android:id="@+id/tv_ai_energy"
+                android:id="@+id/tv_ai_stamina"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0/10"
@@ -238,13 +238,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="YOUR ENERGY"
+                android:text="YOUR STAMINA"
                 android:textColor="@color/text_secondary"
                 android:textSize="10sp"
                 android:letterSpacing="0.1" />
 
             <ProgressBar
-                android:id="@+id/pb_user_energy"
+                android:id="@+id/pb_user_stamina"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
                 android:layout_height="8dp"
@@ -254,7 +254,7 @@
                 android:progressTint="@color/accent_blue" />
                 
             <TextView
-                android:id="@+id/tv_user_energy"
+                android:id="@+id/tv_user_stamina"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0/10"
@@ -310,7 +310,7 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_marginBottom="12dp"
-        android:text="SWAP ACTIVE CARD (1 ENERGY)"
+        android:text="SWAP ACTIVE CARD (1 STAMINA)"
         android:textColor="@color/accent_gold"
         android:textSize="11sp"
         android:letterSpacing="0.05"
